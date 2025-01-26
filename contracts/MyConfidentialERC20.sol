@@ -1,17 +1,31 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
-
 pragma solidity ^0.8.24;
 
 import "fhevm/lib/TFHE.sol";
+import { ConfidentialERC20 } from "fhevm-contracts/contracts/token/ERC20/ConfidentialERC20.sol";
+import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "fhevm/config/ZamaFHEVMConfig.sol";
-import "fhevm-contracts/contracts/token/ERC20/extensions/ConfidentialERC20Mintable.sol";
+import "fhevm/config/ZamaGatewayConfig.sol";
+import "fhevm/gateway/GatewayCaller.sol";
+import "./ERC20.sol";
 
-/// @notice This contract implements an encrypted ERC20-like token with confidential balances using Zama's FHE library.
-/// @dev It supports typical ERC20 functionality such as transferring tokens, minting, and setting allowances,
-/// @dev but uses encrypted data types.
-contract MyConfidentialERC20 is SepoliaZamaFHEVMConfig, ConfidentialERC20Mintable {
-    /// @notice Constructor to initialize the token's name and symbol, and set up the owner
-    /// @param name_ The name of the token
-    /// @param symbol_ The symbol of the token
-    constructor(string memory name_, string memory symbol_) ConfidentialERC20Mintable(name_, symbol_, msg.sender) {}
+contract MyConfidentialERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, GatewayCaller {
+    address public tokenAddress;
+
+    constructor(address _tokenAddress) {
+        // Set the address of the confidential ERC20 token
+        tokenAddress = _tokenAddress;
+    }
+
+    function receiveTokens(einput encryptedAmount, bytes calldata inputProof) public {
+        // Get the ConfidentialERC20 interface
+        ERC20 confidentialToken = ERC20(tokenAddress);
+        euint64 value = TFHE.asEuint64(encryptedAmount, inputProof);
+        // Transfer the encrypted amount to this contract
+        TFHE.allowTransient(value, tokenAddress);
+        require(
+            confidentialToken.transferFrom(msg.sender, address(this), value),
+            "Transfer failed"
+        );
+    }
 }

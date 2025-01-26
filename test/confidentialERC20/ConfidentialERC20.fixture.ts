@@ -7,7 +7,7 @@ export async function deployConfidentialERC20Fixture(): Promise<MyConfidentialER
   const signers = await getSigners();
 
   const contractFactory = await ethers.getContractFactory("MyConfidentialERC20");
-  const contract = await contractFactory.connect(signers.alice).deploy("Naraggara", "NARA"); // City of Zama's battle
+  const contract = await contractFactory.connect(signers.alice).deploy(); // City of Zama's battle
   await contract.waitForDeployment();
 
   return contract;
