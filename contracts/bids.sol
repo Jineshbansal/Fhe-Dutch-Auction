@@ -9,14 +9,16 @@ import "fhevm/gateway/GatewayCaller.sol";
 
 contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, GatewayCaller {
     address public owner;
-
     ERC20 private token1;
     // ERC20 private token2;
 
     constructor(address token1Address) {
-        Gateway.setGateway(Gateway.gatewayContractAddress());
+        // Gateway.setGateway(Gateway.gatewayContractAddress());
         token1 = ERC20(token1Address);
         owner = msg.sender;
+
+        counter = TFHE.asEuint256(15);
+        TFHE.allowThis(counter);
     }
 
     struct Auction {
@@ -29,10 +31,10 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
     }
 
     struct Bid {
-        eaddress auctionId;
-        eaddress bidId;
-        euint64 perTokenRate;
-        euint64 tokenCount;
+        address auctionId;
+        address bidId;
+        uint64 perTokenRate;
+        uint64 tokenCount;
     }
 
     mapping(address => mapping(address => Bid)) public bids;
@@ -44,7 +46,7 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
     // -------------TESTING---------------
 
     euint256 public counter;
-    uint256 public counter_anon = 10;
+    uint256 public counter_anon;
 
     function increment() public {
         counter = TFHE.add(counter, TFHE.asEuint256(1));
@@ -54,12 +56,9 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
     function getCounter() public {
         uint256[] memory cts = new uint256[](1);
         cts[0] = Gateway.toUint256(counter);
-        Gateway.requestDecryption(cts, this.callbackCounter.selector, 0, block.timestamp + 2, false);
+        Gateway.requestDecryption(cts, this.callbackCounter.selector, 0, block.timestamp + 1, true);
     }
 
-    /// @notice Callback function for counter decryption
-    /// @param decryptedInput The decrypted counter value
-    /// @return The decrypted value
     function callbackCounter(uint256, uint256 decryptedInput) public onlyGateway returns (uint256) {
         counter_anon = decryptedInput;
         return decryptedInput;
@@ -136,32 +135,44 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
         require(token1.transfer(address(this), encryptedAmount));
     }
 
-    // function initiateBid(eaddress _auctionId, euint64 _tokenRate, euint64 _tokenCount) public {
-    //     // require(
-    //     //     bids[_auctionId][TFHE.asEaddress(msg.sender)].bidId != TFHE.asEaddress(msg.sender),
-    //     //     "Bid already exists"
-    //     // );
+    function initiateBid(eaddress _auctionId, euint64 _tokenRate, euint64 _tokenCount) public {
+        eaddress _bidderId = TFHE.asEaddress(msg.sender);
+        TFHE.allowThis(_bidderId);
 
-    //     // require(TFHE.ne(bids[TFHE.toUin][TFHE.asEaddress(msg.sender)].bidId, TFHE.asEaddress(msg.sender)));
+        // Decrypt all the params
+        uint256[] memory cts = new uint256[](4);
+        cts[0] = Gateway.toUint256(_auctionId);
+        cts[1] = Gateway.toUint256(_tokenRate);
+        cts[2] = Gateway.toUint256(_tokenCount);
+        cts[3] = Gateway.toUint256(_bidderId);
+        Gateway.requestDecryption(cts, this.callbackInitiateBid.selector, 0, block.timestamp + 100, false);
+    }
 
-    //     Auction memory auction = auctions[_auctionId];
+    function callbackInitiateBid(
+        uint256,
+        address _auctionId,
+        uint64 _tokenRate,
+        uint64 _tokenCount,
+        address _bidderId
+    ) public onlyGateway returns (bool) {
+        // Now carry out the whole process
+        require(bids[_auctionId][_bidderId].bidId != _bidderId);
+        Auction memory auction = auctions[_auctionId];
+        require(_tokenCount > auction.minCount);
+        require(auction.startingBidTime < block.timestamp);
 
-    //     if ((_tokenCount < auction.minCount) || (auction.startingBidTime > block.timestamp)) {
-    //         return false;
-    //     }
+        Bid memory newBid = Bid({
+            auctionId: _auctionId,
+            bidId: msg.sender,
+            perTokenRate: _tokenRate,
+            tokenCount: _tokenCount
+        });
 
-    //     Bid memory newBid = Bid({
-    //         auctionId: _auctionId,
-    //         bidId: msg.sender,
-    //         perTokenRate: _tokenRate,
-    //         tokenCount: _tokenCount
-    //     });
-
-    //     bids[_auctionId][msg.sender] = newBid;
-    //     auctionBidders[_auctionId].push(msg.sender);
-    //     allBids.push(newBid);
-    //     return true;
-    // }
+        bids[_auctionId][msg.sender] = newBid;
+        auctionBidders[_auctionId].push(msg.sender);
+        allBids.push(newBid);
+        return true;
+    }
 
     // function revealAuction() public view returns (Bid[] memory) {
     //     require((auctions[msg.sender].auctionId == msg.sender) && (auctions[msg.sender].endTime < block.timestamp));

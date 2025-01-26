@@ -1,5 +1,6 @@
 import { ethers, network } from "hardhat";
 
+import { awaitAllDecryptionResults, initGateway } from "../asyncDecrypt";
 import { createInstance } from "../instance";
 import { getSigners, initSigners } from "../signers";
 import { debug } from "../utils";
@@ -8,6 +9,7 @@ describe("Blind Auction", function () {
   before(async function () {
     await initSigners();
     this.signers = await getSigners();
+    await initGateway();
   });
 
   beforeEach(async function () {
@@ -35,7 +37,12 @@ describe("Blind Auction", function () {
     console.log(await debug.decrypt64(await this.token1.balanceOf(this.auctionAddress)));
   });
 
-  it("Decryption", async function() {
-    console.log()
-  })
+  it("Decryption", async function () {
+    // await this.auction.increment();
+    // await this.auction.increment();
+    await this.auction.connect(this.signers.carol).getCounter();
+    await awaitAllDecryptionResults();
+
+    console.log(await this.auction.counter_anon());
+  });
 });
