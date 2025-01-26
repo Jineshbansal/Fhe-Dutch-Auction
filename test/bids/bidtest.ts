@@ -1,9 +1,12 @@
 import { ethers, network } from "hardhat";
 
+
+
 import { awaitAllDecryptionResults, initGateway } from "../asyncDecrypt";
 import { createInstance } from "../instance";
 import { getSigners, initSigners } from "../signers";
 import { debug } from "../utils";
+
 
 describe("Blind Auction", function () {
   before(async function () {
@@ -25,8 +28,7 @@ describe("Blind Auction", function () {
     await this.auction.waitForDeployment();
     this.auctionAddress = await this.auction.getAddress();
     this.fhevm = await createInstance();
-  });
-
+  })
   it("Create Auction and Bid", async function () {
     const amount = await this.fhevm
       .createEncryptedInput(this.auctionAddress, this.signers.alice.address)
@@ -74,8 +76,11 @@ describe("Blind Auction", function () {
     );
 
     await awaitAllDecryptionResults();
+    
 
     console.log(await this.auction.counter_anon());
+    const bids = await this.auction.getMyBids();
+    console.log(bids);
   });
 
   it("Decryption", async function () {

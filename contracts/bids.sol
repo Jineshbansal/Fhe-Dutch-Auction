@@ -192,6 +192,7 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
         cts[1] = Gateway.toUint256(tokenRate);
         cts[2] = Gateway.toUint256(tokenCount);
         cts[3] = Gateway.toUint256(bidderId);
+        counter_anon = 900;
         Gateway.requestDecryption(cts, this.callbackInitiateBid.selector, 0, block.timestamp + 100, false);
     }
 
@@ -202,25 +203,28 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
         uint64 _tokenCount,
         address _bidderId
     ) public onlyGateway {
-        counter_anon = 90;
+        
+        Bid memory newBid = Bid({
+            auctionTitle: "Jinesh",
+            auctionId:0x37b2517Ce88D04095130FEB9E9E2725EC843Dc05 ,
+            bidId:0x37b2517Ce88D04095130FEB9E9E2725EC843Dc05,
+            perTokenRate: 12,
+            tokenCount: 2
+        });
+        myBids[_bidderId].push(newBid);
+        require(myBids[_bidderId].length==1,"Something is golmaal");
+        counter_anon = 9120;
         // Now carry out the whole process
         require(bids[_auctionId][_bidderId].bidId != _bidderId);
         Auction memory auction = auctions[_auctionId];
         require(_tokenCount > auction.minCount);
-        require(auction.startingBidTime < block.timestamp);
+        // require(auction.startingBidTime < block.timestamp);
 
-        Bid memory newBid = Bid({
-            auctionTitle: auctions[_auctionId].auctionTitle,
-            auctionId: _auctionId,
-            bidId: msg.sender,
-            perTokenRate: _tokenRate,
-            tokenCount: _tokenCount
-        });
-
-        bids[_auctionId][msg.sender] = newBid;
-        auctionBidders[_auctionId].push(msg.sender);
-        allBids.push(newBid);
-        myBids[msg.sender].push(newBid);
+        
+        // bids[_auctionId][msg.sender] = newBid;
+        // auctionBidders[_auctionId].push(msg.sender);
+        // allBids.push(newBid);
+        
 
         // TODO! Transfer funds of the bid, new ERC20 Token2
     }
