@@ -27,14 +27,55 @@ describe("Blind Auction", function () {
     this.fhevm = await createInstance();
   });
 
-  it("Create Auction", async function () {
-    // const supply = await this.auction.createAuction("Token1", 3000, 100, 100);
-    const encypt_amt = await this.fhevm.createEncryptedInput(this.auctionAddress, this.signers.alice.address);
-    encypt_amt.add64(10000);
-    const amount = await encypt_amt.encrypt();
+  it("Create Auction and Bid", async function () {
+    const amount = await this.fhevm
+      .createEncryptedInput(this.auctionAddress, this.signers.alice.address)
+      .add64(10000)
+      .encrypt();
+    // const amount = await encypt_amt.add64(10000).encrypt();
 
-    await this.auction.createAuction("Token1", 1000, 4, 100, amount.handles[0], amount.inputProof);
-    console.log(await debug.decrypt64(await this.token1.balanceOf(this.auctionAddress)));
+    const amount2 = await this.fhevm
+      .createEncryptedInput(this.auctionAddress, this.signers.bob.address)
+      .add64(10000)
+      .encrypt();
+
+    await this.auction.createAuction("WilliBeans", 1000, 4, 100, amount.handles[0], amount.inputProof);
+    await this.auction
+      .connect(this.signers.bob)
+      .createAuction("WilliBeans2", 1000, 4, 100, amount2.handles[0], amount2.inputProof);
+
+    // console.log(await this.auction.getAuctions());
+
+    // TODO! test the transfers
+
+    // Create Bids
+    const auctionID = await this.fhevm
+      .createEncryptedInput(this.auctionAddress, this.signers.alice.address)
+      .addAddress(this.signers.alice.address)
+      .encrypt();
+
+    const tokenRate = await this.fhevm
+      .createEncryptedInput(this.auctionAddress, this.signers.alice.address)
+      .add64(2)
+      .encrypt();
+
+    const tokenCount = await this.fhevm
+      .createEncryptedInput(this.auctionAddress, this.signers.alice.address)
+      .add64(1000)
+      .encrypt();
+
+    await this.auction.initiateBid(
+      auctionID.handles[0],
+      auctionID.inputProof,
+      tokenRate.handles[0],
+      tokenRate.inputProof,
+      tokenCount.handles[0],
+      tokenCount.inputProof,
+    );
+
+    await awaitAllDecryptionResults();
+
+    console.log(await this.auction.counter_anon());
   });
 
   it("Decryption", async function () {
