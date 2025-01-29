@@ -78,8 +78,8 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
     function createAuction(
         string calldata _auctionTitle,
         uint64 _tokenCount,
-        uint64 _startingBid, // may be same as start time
-        uint64 _endTime
+        uint256 _startingBid, // may be same as start time
+        uint256 _endTime
     ) public {
         require(auctions[msg.sender].auctionId != msg.sender, "Auction already exists");
 
@@ -145,9 +145,9 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
 
     function revealAuction(address _auctionId) public returns (Bid[] memory) {
 
-        require(auctions[_auctionId].endTime < block.timestamp);
+        // require(auctions[_auctionId].endTime < block.timestamp);
 
-        Bid[] memory totalBids = getBidsForAuction(_auctionId);
+        Bid[] memory totalBids = auctionBids[_auctionId];
         for(uint64 i=0;i<totalBids.length;i++){
             TFHE.allowThis(totalBids[i].perTokenRate);
             TFHE.allowThis(totalBids[i].tokenAsked);
@@ -163,19 +163,16 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
         for (uint64 i = 0; i < totalBids.length; i++) {
 
             ebool isTrue=TFHE.gt(tempTotalTokens,0);
-
-                euint64 bidCount = TFHE.select(isTrue,totalBids[i].tokenAsked,TFHE.asEuint64(0));
-                TFHE.allowThis(bidCount);
-                // if (bidCount > tempTotalTokens) {
-                //     bidCount = tempTotalTokens;
-                // }
-                euint64 etempTotalTokens=TFHE.select(isTrue,tempTotalTokens,TFHE.asEuint64(0));
-                TFHE.allowThis(etempTotalTokens);
-                bidCount=TFHE.select(isTrue,TFHE.select(TFHE.gt(bidCount,tempTotalTokens), etempTotalTokens, bidCount),bidCount);
-                tempTotalTokens=TFHE.select(isTrue,TFHE.sub(tempTotalTokens,bidCount),tempTotalTokens);
-                TFHE.allowThis(tempTotalTokens);
-                finalPrice = TFHE.select(isTrue,totalBids[i].perTokenRate,finalPrice);
-                TFHE.allowThis(finalPrice);
+            TFHE.allowThis(isTrue);
+            euint64 bidCount = TFHE.select(isTrue,totalBids[i].tokenAsked,TFHE.asEuint64(0));
+            TFHE.allowThis(bidCount);
+            
+            bidCount=TFHE.select(isTrue,TFHE.select(TFHE.gt(bidCount,tempTotalTokens), tempTotalTokens, bidCount),bidCount);
+            TFHE.allowThis(bidCount);
+            tempTotalTokens=TFHE.select(isTrue,TFHE.sub(tempTotalTokens,bidCount),tempTotalTokens);
+            TFHE.allowThis(tempTotalTokens);
+            finalPrice = TFHE.select(isTrue,totalBids[i].perTokenRate,finalPrice);
+            TFHE.allowThis(finalPrice);
            
         }
         tempTotalTokens = totalTokens;
@@ -185,11 +182,16 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
             // if (bidCount > tempTotalTokens) {
             //     bidCount = tempTotalTokens;
             // }
-            ebool isTrue=TFHE.gt(bidCount,tempTotalTokens);
-            TFHE.allowThis(isTrue);
-            bidCount=TFHE.select(isTrue, tempTotalTokens, bidCount);
+            ebool isgreater=TFHE.gt(bidCount,tempTotalTokens);
+            TFHE.allowThis(isgreater);
+            bidCount=TFHE.select(isgreater, tempTotalTokens, bidCount);
             TFHE.allowThis(bidCount);
-            tempTotalTokens=TFHE.select(isTrue,TFHE.sub(tempTotalTokens,bidCount),tempTotalTokens);
+
+            euint64 subtemp=TFHE.sub(tempTotalTokens,bidCount);
+            TFHE.allowThis(subtemp);
+            ebool isTrue=TFHE.gt(tempTotalTokens,0);
+            TFHE.allowThis(isTrue);
+            tempTotalTokens=TFHE.select(isTrue,subtemp,tempTotalTokens);
             TFHE.allowThis(tempTotalTokens);
             TFHE.allowTransient(bidCount, address(auctionToken));
             auctionToken.transfer(totalBids[i].bidId, bidCount);
@@ -201,16 +203,17 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
             euint64 z=TFHE.sub(x,y);
             TFHE.allowThis(z);
 
-            TFHE.allowTransient(z, address(auctionToken));
+            TFHE.allowTransient(z, address(token2));
             token2.transfer(totalBids[i].bidId, z);
         }
-        euint64 leftTokens=TFHE.sub(totalTokens,tempTotalTokens);
-        TFHE.allowThis(leftTokens);
+        euint64 sellTokens=TFHE.sub(totalTokens,tempTotalTokens);
+        TFHE.allowThis(sellTokens);
 
-        euint64 toTransfer=TFHE.mul(leftTokens,finalPrice);
+        euint64 toTransfer=TFHE.mul(sellTokens,finalPrice);
         TFHE.allowThis(toTransfer);
-
+        TFHE.allowTransient(toTransfer, address(token2));
         token2.transfer(_auctionId, toTransfer);
+        TFHE.allowTransient(tempTotalTokens, address(auctionToken));
         auctionToken.transfer(_auctionId, tempTotalTokens);
     }
 
