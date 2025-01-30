@@ -25,7 +25,7 @@ describe("Blind Auction", function () {
 
     // Auctions Contract
     const auctionFactory = await ethers.getContractFactory("BlindAuction");
-    this.auction = await auctionFactory.connect(this.signers.alice).deploy(this.auctionTokenAddress,this.token1Address);
+    this.auction = await auctionFactory.connect(this.signers.alice).deploy();
     await this.auction.waitForDeployment();
     this.auctionAddress = await this.auction.getAddress();
     this.fhevm = await createInstance();
@@ -46,7 +46,7 @@ describe("Blind Auction", function () {
 
     await this.auctionToken["approve(address,bytes32,bytes)"](this.auctionAddress,approveTokens.handles[0],approveTokens.inputProof);
 
-    await this.auction.createAuction("WilliBeans", 1000, 4, 100);
+    await this.auction.createAuction(this.auctionTokenAddress,this.token1Address,"WilliBeans", 1000, 4, 100);
 
     // console.log(await this.auction.getAuctions());
     // console.log(await debug.decrypt64(await this.auctionToken.balanceOf(this.auctionAddress)));
@@ -68,7 +68,7 @@ describe("Blind Auction", function () {
 
     await this.auctionToken["approve(address,bytes32,bytes)"](this.auctionAddress,approveTokens.handles[0],approveTokens.inputProof);
 
-    await this.auction.createAuction("WilliBeans", 1000, 4, 100);
+    await this.auction.createAuction(this.auctionTokenAddress,this.token1Address,"WilliBeans", 1000, 4, 100);
 
     const tokenRate=await this.fhevm.createEncryptedInput(this.auctionAddress, this.signers.bob.address).add64(2).encrypt();
     const tokenCount=await this.fhevm.createEncryptedInput(this.auctionAddress, this.signers.bob.address).add64(200).encrypt();
@@ -101,7 +101,7 @@ describe("Blind Auction", function () {
 
     await this.auctionToken["approve(address,bytes32,bytes)"](this.auctionAddress,approveTokens.handles[0],approveTokens.inputProof);
 
-    await this.auction.createAuction("WilliBeans", 1000, 4, 100);
+    await this.auction.createAuction(this.auctionTokenAddress,this.token1Address,"WilliBeans", 1000, 4, 100);
 
     const tokenRate=await this.fhevm.createEncryptedInput(this.auctionAddress, this.signers.bob.address).add64(2).encrypt();
     const tokenCount=await this.fhevm.createEncryptedInput(this.auctionAddress, this.signers.bob.address).add64(200).encrypt();
