@@ -75,7 +75,7 @@ describe("Blind Auction", function () {
     const approveTokensForBid=await this.fhevm.createEncryptedInput(this.token1Address, this.signers.bob.address).add64(200*2).encrypt();
 
     await this.token1.connect(this.signers.bob)["approve(address,bytes32,bytes)"](this.auctionAddress,approveTokensForBid.handles[0],approveTokensForBid.inputProof);
-    await this.auction.connect(this.signers.bob).initiateBid(this.signers.alice.address,tokenRate.handles[0],tokenRate.inputProof,tokenCount.handles[0],tokenCount.inputProof);
+    await this.auction.connect(this.signers.bob).initiateBid(1,tokenRate.handles[0],tokenRate.inputProof,tokenCount.handles[0],tokenCount.inputProof);
 
     // console.log(await debug.decrypt64(await this.token1.balanceOf(this.signers.bob.address)));
     // console.log(await debug.decrypt64(await this.token1.balanceOf(this.auctionAddress)));
@@ -108,7 +108,7 @@ describe("Blind Auction", function () {
     const approveTokensForBid=await this.fhevm.createEncryptedInput(this.token1Address, this.signers.bob.address).add64(200*2).encrypt();
 
     await this.token1.connect(this.signers.bob)["approve(address,bytes32,bytes)"](this.auctionAddress,approveTokensForBid.handles[0],approveTokensForBid.inputProof);
-    await this.auction.connect(this.signers.bob).initiateBid(this.signers.alice.address,tokenRate.handles[0],tokenRate.inputProof,tokenCount.handles[0],tokenCount.inputProof);
+    await this.auction.connect(this.signers.bob).initiateBid(1,tokenRate.handles[0],tokenRate.inputProof,tokenCount.handles[0],tokenCount.inputProof);
 
     // console.log("token1 balanced of bob before",await debug.decrypt64(await this.token1.balanceOf(this.signers.bob.address)));
     // console.log("AuctionToken balanced of bob before",await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.bob.address)));
@@ -116,7 +116,7 @@ describe("Blind Auction", function () {
     console.log("AuctionToken balanced of contract before",await debug.decrypt64(await this.auctionToken.balanceOf(this.auctionAddress)));
     // console.log("token1 balanced of alice before",await debug.decrypt64(await this.token1.balanceOf(this.signers.alice.address)));
     // console.log("AuctionToken balanced of alice before",await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.alice.address)));
-    await this.auction.connect(this.signers.alice).revealAuction(this.signers.alice);
+    await this.auction.connect(this.signers.alice).revealAuction(1);
 
     // console.log("token1 balanced of bob after",await debug.decrypt64(await this.token1.balanceOf(this.signers.bob.address)));
     console.log("AuctionToken balanced of bob after",await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.bob.address)));
