@@ -1,9 +1,10 @@
+import { expect } from "chai";
 import { ethers, network } from "hardhat";
+
 import { awaitAllDecryptionResults, initGateway } from "../asyncDecrypt";
 import { createInstance } from "../instance";
 import { getSigners, initSigners } from "../signers";
 import { debug } from "../utils";
-
 
 describe("Blind Auction", function () {
   before(async function () {
@@ -18,6 +19,10 @@ describe("Blind Auction", function () {
     this.token1 = await token1Factory.connect(this.signers.bob).deploy();
     await this.token1.waitForDeployment();
     this.token1Address = await this.token1.getAddress();
+
+    await this.token1.mint(this.signers.carol);
+    await this.token1.mint(this.signers.alice);
+
     const auctionTokenFactory = await ethers.getContractFactory("ERC20");
     this.auctionToken = await auctionTokenFactory.connect(this.signers.alice).deploy();
     await this.auctionToken.waitForDeployment();
@@ -29,106 +34,150 @@ describe("Blind Auction", function () {
     await this.auction.waitForDeployment();
     this.auctionAddress = await this.auction.getAddress();
     this.fhevm = await createInstance();
-  })
+  });
+
+  async function createAuction(this: Mocha.Context, auctionTitle: string) {
+    const approveTokens = await this.fhevm
+      .createEncryptedInput(this.auctionTokenAddress, this.signers.alice.address)
+      .add64(10000)
+      .encrypt();
+
+    await this.auctionToken["approve(address,bytes32,bytes)"](
+      this.auctionAddress,
+      approveTokens.handles[0],
+      approveTokens.inputProof,
+    );
+
+    await this.auction.createAuction(this.auctionTokenAddress, this.token1Address, auctionTitle, 1000, 4, 100);
+  }
+
+  async function initiateBid(this: Mocha.Context, bidder: any, auctionId: any, tokenrate: any, tokenAsked: any) {
+    const tokenRate = await this.fhevm
+      .createEncryptedInput(this.auctionAddress, bidder.address)
+      .add64(tokenrate)
+      .encrypt();
+    const tokenCount = await this.fhevm
+      .createEncryptedInput(this.auctionAddress, bidder.address)
+      .add64(tokenAsked)
+      .encrypt();
+    const approveTokensForBid = await this.fhevm
+      .createEncryptedInput(this.token1Address, bidder.address)
+      .add64(tokenrate * tokenAsked)
+      .encrypt();
+
+    await this.token1
+      .connect(bidder)
+      ["approve(address,bytes32,bytes)"](
+        this.auctionAddress,
+        approveTokensForBid.handles[0],
+        approveTokensForBid.inputProof,
+      );
+    await this.auction
+      .connect(bidder)
+      .initiateBid(auctionId, tokenRate.handles[0], tokenRate.inputProof, tokenCount.handles[0], tokenCount.inputProof);
+  }
+
   it("Create Auction", async function () {
-    const amount = await this.fhevm
-      .createEncryptedInput(this.auctionAddress, this.signers.alice.address)
-      .add64(10000)
-      .encrypt();
-    // const amount = await encypt_amt.add64(10000).encrypt();
-
-    const amount2 = await this.fhevm
-      .createEncryptedInput(this.auctionAddress, this.signers.bob.address)
-      .add64(10000)
-      .encrypt();
-
-    const approveTokens=await this.fhevm.createEncryptedInput(this.auctionTokenAddress, this.signers.alice.address).add64(1000).encrypt();
-
-    await this.auctionToken["approve(address,bytes32,bytes)"](this.auctionAddress,approveTokens.handles[0],approveTokens.inputProof);
-
-    await this.auction.createAuction(this.auctionTokenAddress,this.token1Address,"WilliBeans", 1000, 4, 100);
+    await createAuction.call(this, "Willins".toString());
 
     // console.log(await this.auction.getAuctions());
-    // console.log(await debug.decrypt64(await this.auctionToken.balanceOf(this.auctionAddress)));
+    expect(await debug.decrypt64(await this.auctionToken.balanceOf(this.auctionAddress))).to.equal("1000");
   });
+
   it("Create Bids", async function () {
-    
-    const amount = await this.fhevm
-      .createEncryptedInput(this.auctionAddress, this.signers.alice.address)
-      .add64(10000)
-      .encrypt();
-    // const amount = await encypt_amt.add64(10000).encrypt();
+    await createAuction.call(this, "Willins".toString());
 
-    const amount2 = await this.fhevm
-      .createEncryptedInput(this.auctionAddress, this.signers.bob.address)
-      .add64(10000)
-      .encrypt();
+    await initiateBid.call(this, this.signers.carol, 1, 2, 200);
+    await initiateBid.call(this, this.signers.bob, 1, 3, 300);
+    await initiateBid.call(this, this.signers.alice, 1, 4, 400);
 
-    const approveTokens=await this.fhevm.createEncryptedInput(this.auctionTokenAddress, this.signers.alice.address).add64(1000).encrypt();
-
-    await this.auctionToken["approve(address,bytes32,bytes)"](this.auctionAddress,approveTokens.handles[0],approveTokens.inputProof);
-
-    await this.auction.createAuction(this.auctionTokenAddress,this.token1Address,"WilliBeans", 1000, 4, 100);
-
-    const tokenRate=await this.fhevm.createEncryptedInput(this.auctionAddress, this.signers.bob.address).add64(2).encrypt();
-    const tokenCount=await this.fhevm.createEncryptedInput(this.auctionAddress, this.signers.bob.address).add64(200).encrypt();
-    const approveTokensForBid=await this.fhevm.createEncryptedInput(this.token1Address, this.signers.bob.address).add64(200*2).encrypt();
-
-    await this.token1.connect(this.signers.bob)["approve(address,bytes32,bytes)"](this.auctionAddress,approveTokensForBid.handles[0],approveTokensForBid.inputProof);
-    await this.auction.connect(this.signers.bob).initiateBid(1,tokenRate.handles[0],tokenRate.inputProof,tokenCount.handles[0],tokenCount.inputProof);
-
-    // console.log(await debug.decrypt64(await this.token1.balanceOf(this.signers.bob.address)));
-    // console.log(await debug.decrypt64(await this.token1.balanceOf(this.auctionAddress)));
-
-    // console.log(await this.auction.connect(this.signers.bob).getMyBids());
-    
-    
+    expect(await debug.decrypt64(await this.token1.balanceOf(this.signers.carol.address))).to.equal("999600");
+    expect(await debug.decrypt64(await this.token1.balanceOf(this.auctionAddress))).to.equal("2900");
   });
+
   it("reveal Bids", async function () {
-    
-    const amount = await this.fhevm
-      .createEncryptedInput(this.auctionAddress, this.signers.alice.address)
-      .add64(10000)
-      .encrypt();
-    // const amount = await encypt_amt.add64(10000).encrypt();
+    await createAuction.call(this, "Willins".toString());
 
-    const amount2 = await this.fhevm
-      .createEncryptedInput(this.auctionAddress, this.signers.bob.address)
-      .add64(10000)
-      .encrypt();
+    await initiateBid.call(this, this.signers.bob, 1, 2, 200);
+    await initiateBid.call(this, this.signers.carol, 1, 3, 300);
 
-    const approveTokens=await this.fhevm.createEncryptedInput(this.auctionTokenAddress, this.signers.alice.address).add64(1000).encrypt();
+    // console.log(
+    //   "token1 balance of bob before",
+    //   await debug.decrypt64(await this.token1.balanceOf(this.signers.bob.address)),
+    // );
+    // console.log(
+    //   "AuctionToken balance of bob before",
+    //   await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.bob.address)),
+    // );
 
-    await this.auctionToken["approve(address,bytes32,bytes)"](this.auctionAddress,approveTokens.handles[0],approveTokens.inputProof);
+    // console.log(
+    //   "token1 balance of carol before",
+    //   await debug.decrypt64(await this.token1.balanceOf(this.signers.carol.address)),
+    // );
+    // console.log(
+    //   "AuctionToken balance of carol before",
+    //   await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.carol.address)),
+    // );
 
-    await this.auction.createAuction(this.auctionTokenAddress,this.token1Address,"WilliBeans", 1000, 4, 100);
+    // console.log(
+    //   "token1 balance of contract before",
+    //   await debug.decrypt64(await this.token1.balanceOf(this.auctionAddress)),
+    // );
+    // console.log(
+    //   "AuctionToken balance of contract before",
+    //   await debug.decrypt64(await this.auctionToken.balanceOf(this.auctionAddress)),
+    // );
 
-    const tokenRate=await this.fhevm.createEncryptedInput(this.auctionAddress, this.signers.bob.address).add64(2).encrypt();
-    const tokenCount=await this.fhevm.createEncryptedInput(this.auctionAddress, this.signers.bob.address).add64(200).encrypt();
-    const approveTokensForBid=await this.fhevm.createEncryptedInput(this.token1Address, this.signers.bob.address).add64(200*2).encrypt();
+    // console.log(
+    //   "token1 balanced of alice before",
+    //   await debug.decrypt64(await this.token1.balanceOf(this.signers.alice.address)),
+    // );
+    // console.log(
+    //   "AuctionToken balanced of alice before",
+    //   await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.alice.address)),
+    // );
 
-    await this.token1.connect(this.signers.bob)["approve(address,bytes32,bytes)"](this.auctionAddress,approveTokensForBid.handles[0],approveTokensForBid.inputProof);
-    await this.auction.connect(this.signers.bob).initiateBid(1,tokenRate.handles[0],tokenRate.inputProof,tokenCount.handles[0],tokenCount.inputProof);
-
-    // console.log("token1 balanced of bob before",await debug.decrypt64(await this.token1.balanceOf(this.signers.bob.address)));
-    // console.log("AuctionToken balanced of bob before",await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.bob.address)));
-    console.log("token1 balanced of contract before",await debug.decrypt64(await this.token1.balanceOf(this.auctionAddress)));
-    console.log("AuctionToken balanced of contract before",await debug.decrypt64(await this.auctionToken.balanceOf(this.auctionAddress)));
-    // console.log("token1 balanced of alice before",await debug.decrypt64(await this.token1.balanceOf(this.signers.alice.address)));
-    // console.log("AuctionToken balanced of alice before",await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.alice.address)));
     await this.auction.connect(this.signers.alice).revealAuction(1);
 
-    // console.log("token1 balanced of bob after",await debug.decrypt64(await this.token1.balanceOf(this.signers.bob.address)));
-    console.log("AuctionToken balanced of bob after",await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.bob.address)));
-    console.log("token1 balanced of contract after",await debug.decrypt64(await this.token1.balanceOf(this.auctionAddress)));
-    console.log("AuctionToken balanced of contract after",await debug.decrypt64(await this.auctionToken.balanceOf(this.auctionAddress)));
-    console.log("token1 balanced of alice after",await debug.decrypt64(await this.token1.balanceOf(this.signers.alice.address)));
-    console.log("AuctionToken balanced of alice after",await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.alice.address)));
+    // console.log(
+    //   "token1 balance of bob after",
+    //   await debug.decrypt64(await this.token1.balanceOf(this.signers.bob.address)),
+    // );
+    // console.log(
+    //   "AuctionToken balance of bob after",
+    //   await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.bob.address)),
+    // );
 
-    
-    
+    // console.log(
+    //   "token1 balance of carol after",
+    //   await debug.decrypt64(await this.token1.balanceOf(this.signers.carol.address)),
+    // );
+    // console.log(
+    //   "AuctionToken balance of carol after",
+    //   await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.carol.address)),
+    // );
+
+    // console.log(
+    //   "token1 balance of contract after",
+    //   await debug.decrypt64(await this.token1.balanceOf(this.auctionAddress)),
+    // );
+    // console.log(
+    //   "AuctionToken balance of contract after",
+    //   await debug.decrypt64(await this.auctionToken.balanceOf(this.auctionAddress)),
+    // );
+
+    // console.log(
+    //   "token1 balanced of alice after",
+    //   await debug.decrypt64(await this.token1.balanceOf(this.signers.alice.address)),
+    // );
   });
 
+  it("Increse existing bid", async function () {
+    await createAuction.call(this, "Willins".toString());
 
+    await initiateBid.call(this, this.signers.carol, 1, 2, 200);
 
+    
+
+  });
 });

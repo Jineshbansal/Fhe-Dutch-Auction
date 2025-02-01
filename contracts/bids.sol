@@ -55,6 +55,13 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
     
     mapping(address => Bid[]) myBids; // drop in claimWonAuctionPrize and claimLostAuctionPrize --
 
+    // ------------------
+
+    function getAuctions() public view returns (Auction[] memory) {
+        return allAuctions;
+    }
+    // ------------------
+
     function createAuction(
         address _auctionTokenAddress,
         address _bidTokenAddress,
@@ -133,7 +140,14 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
         ConfidentialERC20(auctions[auctionId].bidtokenAddress).transferFrom(msg.sender, address(this), tokenSubmit);
     }
 
-   
+    function requestMixed(euint64 perTokenRate, euint64 tokenCount) internal {
+        uint256[] memory cts = new uint256[](2);
+        cts[0] = Gateway.toUint256(perTokenRate);
+        cts[1] = Gateway.toUint256(tokenCount);
+        Gateway.requestDecryption(cts, this.callbackMixed.selector, 0, block.timestamp + 100, false);
+    }
+
+    function callbackMixed(uint256, uint64 perTokenRate, uint64 tokenCount) public onlyGateway returns (uint64) {}
 
     function revealAuction(uint256 _auctionId) public {
         // require(auctions[_auctionId].endTime < block.timestamp);
@@ -149,12 +163,11 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
             TFHE.allowThis(totalBidsQuantity[i].perTokenRate);
             TFHE.allowThis(totalBidsQuantity[i].tokenAsked);
 
-            
         }
 
         for (uint i = 0; i < totalBids.length; i++) {
             for (uint j = 0; j < totalBids.length - i - 1; j++) {
-                ebool isTrue = TFHE.gt(totalBidsQuantity[j].perTokenRate, totalBidsQuantity[j + 1].perTokenRate);
+                ebool isTrue = TFHE.lt(totalBidsQuantity[j].perTokenRate, totalBidsQuantity[j + 1].perTokenRate);
                 TFHE.allowThis(isTrue);
                 BidQuantity memory temp = totalBidsQuantity[j];
                 TFHE.allowThis(temp.perTokenRate);
@@ -183,7 +196,8 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
 
         euint64 finalPrice = TFHE.asEuint64(0);
         TFHE.allowThis(finalPrice);
-        for (uint64 i = 0; i < totalBids.length; i++) {
+        require(totalBids.length==2,"bids not completed");
+        for (uint256 i = 0; i <totalBids.length ; i++) {
             ebool isTrue = TFHE.gt(tempTotalTokens, 0);
             TFHE.allowThis(isTrue);
             euint64 bidCount = TFHE.select(isTrue, totalBidsQuantity[i].tokenAsked, TFHE.asEuint64(0));
@@ -202,7 +216,9 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
         }
         uint256 auctionAddress = auctionId;
         tempTotalTokens = totalTokens;
-        for (uint64 i = 0; i < totalBids.length; i++) {
+        TFHE.allowThis(tempTotalTokens);
+        
+        for (uint256 i = 0; i <totalBids.length ; i++) {
             euint64 bidCount = totalBids[i].tokenAsked;
             TFHE.allowThis(bidCount);
 
@@ -211,11 +227,9 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
             bidCount = TFHE.select(isgreater, tempTotalTokens, bidCount);
             TFHE.allowThis(bidCount);
 
-            euint64 subtemp = TFHE.sub(tempTotalTokens, bidCount);
-            TFHE.allowThis(subtemp);
             ebool isTrue = TFHE.gt(tempTotalTokens, 0);
             TFHE.allowThis(isTrue);
-            tempTotalTokens = TFHE.select(isTrue, subtemp, tempTotalTokens);
+            tempTotalTokens = TFHE.select(isTrue, TFHE.sub(tempTotalTokens, bidCount), tempTotalTokens);
             TFHE.allowThis(tempTotalTokens);
             TFHE.allowTransient(bidCount, auctions[auctionId].auctionTokenAddress);
             ConfidentialERC20(auctions[auctionId].auctionTokenAddress).transfer(totalBids[i].bidId, bidCount);
@@ -230,23 +244,28 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
             TFHE.allowTransient(z, auctions[auctionAddress].bidtokenAddress);
             ConfidentialERC20(auctions[auctionAddress].bidtokenAddress).transfer(totalBids[i].bidId, z);
         }
+        TFHE.allowThis(totalTokens);
+        TFHE.allowThis(tempTotalTokens);
         euint64 sellTokens = TFHE.sub(totalTokens, tempTotalTokens);
         TFHE.allowThis(sellTokens);
-
+        TFHE.allowThis(finalPrice);
         euint64 toTransfer = TFHE.mul(sellTokens, finalPrice);
+        // euint64 toTransfer = TFHE.asEuint64(1200);
         TFHE.allowThis(toTransfer);
         TFHE.allowTransient(toTransfer, auctions[auctionAddress].bidtokenAddress);
         ConfidentialERC20(auctions[auctionAddress].bidtokenAddress).transfer(
             auctions[auctionAddress].auctionOwner,
             toTransfer
         );
-        TFHE.allowTransient(tempTotalTokens, auctions[auctionAddress].auctionTokenAddress);
-        ConfidentialERC20(auctions[auctionAddress].auctionTokenAddress).transfer(
-            auctions[auctionAddress].auctionOwner,
-            tempTotalTokens
-        );
 
-        auctions[auctionAddress].isActive = false;
+        
+        // TFHE.allowTransient(tempTotalTokens, auctions[auctionAddress].auctionTokenAddress);
+        // ConfidentialERC20(auctions[auctionAddress].auctionTokenAddress).transfer(
+        //     auctions[auctionAddress].auctionOwner,
+        //     tempTotalTokens
+        // );
+
+        // auctions[auctionAddress].isActive = false;
     }
 
     function updateBidInc(

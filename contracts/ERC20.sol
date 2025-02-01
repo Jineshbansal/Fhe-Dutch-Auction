@@ -13,6 +13,6 @@ contract ERC20 is SepoliaZamaFHEVMConfig, ConfidentialERC20 {
     }
 
     function mint(address to) public {
-        _unsafeMint(to, 10);
+        _unsafeMint(to, 1000000);
     }
 }
