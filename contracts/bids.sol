@@ -36,17 +36,23 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
         euint64 tokenAsked;
     }
 
+    struct BidPlainText {
+        address bidId;
+        int256 auctionId;
+        uint64 perTokenRate;
+        uint64 tokenAsked;
+    }
+
     struct BidQuantity {
         euint64 perTokenRate;
         euint64 tokenAsked;
     }
 
-
     mapping(address => Auction[]) public MyAuctions; // drop after revealAuction for _auctionId           --
     mapping(uint256 => Auction) public auctions; // drop after revealAuction for _auctionId           --
     mapping(uint256 => Bid[]) public auctionBids; // drop after revealAuction for _auctionId           --
     Auction[] public allAuctions; // drop after claimLeftAuctionStake for _auctionId   --
-
+    mapping(uint256 => BidPlainText[]) public auctionPlaintextBids; // drop after revealAuction for _auctionId
     mapping(address => Bid[]) myBids; // drop in claimWonAuctionPrize and claimLostAuctionPrize --
 
     function createAuction(
@@ -127,6 +133,17 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
         ConfidentialERC20(auctions[auctionId].bidtokenAddress).transferFrom(msg.sender, address(this), tokenSubmit);
     }
 
+    function requestMixed(euint64 perTokenRate, euint64 tokenCount) internal {
+        uint256[] memory cts = new uint256[](2);
+        cts[0] = Gateway.toUint256(perTokenRate);
+        cts[1] = Gateway.toUint256(tokenCount);
+        Gateway.requestDecryption(cts, this.callbackMixed.selector, 0, block.timestamp + 100, false);
+    }
+
+    function callbackMixed(uint256, uint64 perTokenRate, uint64 tokenCount) public onlyGateway returns (uint64) {
+        
+    }
+
     function revealAuction(uint256 _auctionId) public {
         // require(auctions[_auctionId].endTime < block.timestamp);
         uint256 auctionId = _auctionId;
@@ -140,6 +157,9 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
             totalBidsQuantity[i].tokenAsked = totalBids[i].tokenAsked;
             TFHE.allowThis(totalBidsQuantity[i].perTokenRate);
             TFHE.allowThis(totalBidsQuantity[i].tokenAsked);
+
+            // decrypting the perTokenRate and tokenAsked in each bid
+            requestMixed(totalBids[i].perTokenRate, totalBids[i].tokenAsked);
         }
 
         for (uint i = 0; i < totalBids.length; i++) {
