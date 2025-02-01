@@ -1,15 +1,12 @@
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
 
-
-
 import { awaitAllDecryptionResults, initGateway } from "../asyncDecrypt";
 import { createInstance } from "../instance";
 import { getSigners, initSigners } from "../signers";
 import { debug } from "../utils";
 
-
-describe("Blind Auction", function () {
+describe("Blind Auction ERC20", function () {
   before(async function () {
     await initSigners();
     this.signers = await getSigners();
@@ -18,29 +15,40 @@ describe("Blind Auction", function () {
 
   beforeEach(async function () {
     // Token1 Contract
-    const token1Factory = await ethers.getContractFactory("ConfERC20");
-    this.token1 = await token1Factory.connect(this.signers.bob).deploy();
-    await this.token1.waitForDeployment();
-    this.token1Address = await this.token1.getAddress();
+    const bitTokenFactory = await ethers.getContractFactory("ConfERC20");
+    this.bidToken = await bitTokenFactory.connect(this.signers.bob).deploy();
+    await this.bidToken.waitForDeployment();
+    this.bidTokenAddress = await this.bidToken.getAddress();
 
-    await this.token1.mint(this.signers.alice);
-    await this.token1.mint(this.signers.carol);
-    await this.token1.mint(this.signers.dave);
-    await this.token1.mint(this.signers.eve);
-    await this.token1.mint(this.signers.fred);
-    await this.token1.mint(this.signers.greg);
-    await this.token1.mint(this.signers.hugo);
-    await this.token1.mint(this.signers.ian);
-    await this.token1.mint(this.signers.jane);
-    
+    await this.bidToken.mint(this.signers.alice);
+    await this.bidToken.mint(this.signers.carol);
+    await this.bidToken.mint(this.signers.dave);
+    await this.bidToken.mint(this.signers.eve);
+    await this.bidToken.mint(this.signers.fred);
+    await this.bidToken.mint(this.signers.greg);
+    await this.bidToken.mint(this.signers.hugo);
+    await this.bidToken.mint(this.signers.ian);
+    await this.bidToken.mint(this.signers.jane);
+    await this.bidToken.mint(this.signers.a);
+    await this.bidToken.mint(this.signers.b);
+    await this.bidToken.mint(this.signers.c);
+    await this.bidToken.mint(this.signers.d);
+    await this.bidToken.mint(this.signers.e);
+    await this.bidToken.mint(this.signers.f);
+    await this.bidToken.mint(this.signers.g);
+    await this.bidToken.mint(this.signers.h);
+    await this.bidToken.mint(this.signers.i);
+    await this.bidToken.mint(this.signers.j);
+    await this.bidToken.mint(this.signers.k);
+    await this.bidToken.mint(this.signers.l);
 
-    const auctionTokenFactory = await ethers.getContractFactory("ConfERC20");
+    const auctionTokenFactory = await ethers.getContractFactory("NativeERC20");
     this.auctionToken = await auctionTokenFactory.connect(this.signers.alice).deploy();
     await this.auctionToken.waitForDeployment();
     this.auctionTokenAddress = await this.auctionToken.getAddress();
 
     // Auctions Contract
-    const auctionFactory = await ethers.getContractFactory("BlindAuction");
+    const auctionFactory = await ethers.getContractFactory("BlindAuctionERC20");
     this.auction = await auctionFactory.connect(this.signers.alice).deploy();
     await this.auction.waitForDeployment();
     this.auctionAddress = await this.auction.getAddress();
@@ -48,18 +56,9 @@ describe("Blind Auction", function () {
   });
 
   async function createAuction(this: Mocha.Context, auctionTitle: string) {
-    const approveTokens = await this.fhevm
-      .createEncryptedInput(this.auctionTokenAddress, this.signers.alice.address)
-      .add64(10000)
-      .encrypt();
+    await this.auctionToken["approve(address,uint256)"](this.auctionAddress, 1000);
 
-    await this.auctionToken["approve(address,bytes32,bytes)"](
-      this.auctionAddress,
-      approveTokens.handles[0],
-      approveTokens.inputProof,
-    );
-
-    await this.auction.createAuction(this.auctionTokenAddress, this.token1Address, auctionTitle, 1000, 4, 100);
+    await this.auction.createAuction(this.auctionTokenAddress, this.bidTokenAddress, auctionTitle, 1000, 4, 100);
   }
 
   async function initiateBid(this: Mocha.Context, bidder: any, auctionId: any, tokenrate: any, tokenAsked: any) {
@@ -72,11 +71,11 @@ describe("Blind Auction", function () {
       .add64(tokenAsked)
       .encrypt();
     const approveTokensForBid = await this.fhevm
-      .createEncryptedInput(this.token1Address, bidder.address)
+      .createEncryptedInput(this.bidTokenAddress, bidder.address)
       .add64(tokenrate * tokenAsked)
       .encrypt();
 
-    await this.token1
+    await this.bidToken
       .connect(bidder)
       ["approve(address,bytes32,bytes)"](
         this.auctionAddress,
@@ -91,7 +90,7 @@ describe("Blind Auction", function () {
   it("Create Auction", async function () {
     await createAuction.call(this, "Willins".toString());
 
-    expect(await debug.decrypt64(await this.auctionToken.balanceOf(this.auctionAddress))).to.equal("1000");
+    expect(await this.auctionToken.balanceOf(this.auctionAddress)).to.equal("1000");
   });
 
   it("Create Bids", async function () {
@@ -104,10 +103,9 @@ describe("Blind Auction", function () {
     await initiateBid.call(this, this.signers.greg, 1, 7, 700);
     await initiateBid.call(this, this.signers.hugo, 1, 8, 800);
     await initiateBid.call(this, this.signers.ian, 1, 9, 900);
-    await initiateBid.call(this, this.signers.jane, 1, 10, 1000);
 
     const totalBidTokens = 2 * 200 + 3 * 300 + 4 * 400 + 5 * 500 + 6 * 600 + 7 * 700 + 8 * 800 + 9 * 900 + 10 * 1000;
-    expect(await debug.decrypt64(await this.token1.balanceOf(this.auctionAddress))).to.equal(totalBidTokens);
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.auctionAddress))).to.equal(totalBidTokens);
   });
 
   it("Increse existing bid", async function () {
@@ -124,11 +122,11 @@ describe("Blind Auction", function () {
       .add64(300)
       .encrypt();
     const approveTokensForBid = await this.fhevm
-      .createEncryptedInput(this.token1Address, this.signers.carol.address)
+      .createEncryptedInput(this.bidTokenAddress, this.signers.carol.address)
       .add64(500)
       .encrypt();
 
-    await this.token1
+    await this.bidToken
       .connect(this.signers.carol)
       ["approve(address,bytes32,bytes)"](
         this.auctionAddress,
@@ -136,13 +134,13 @@ describe("Blind Auction", function () {
         approveTokensForBid.inputProof,
       );
 
-    expect(await debug.decrypt64(await this.token1.balanceOf(this.auctionAddress))).to.equal("400");
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.auctionAddress))).to.equal("400");
 
     await this.auction
       .connect(this.signers.carol)
       .updateBidInc(1, tokenRate.handles[0], tokenRate.inputProof, tokenCount.handles[0], tokenCount.inputProof);
 
-    expect(await debug.decrypt64(await this.token1.balanceOf(this.auctionAddress))).to.equal("900");
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.auctionAddress))).to.equal("900");
   });
 
   it("Decrease existing bid", async function () {
@@ -159,13 +157,13 @@ describe("Blind Auction", function () {
       .add64(100)
       .encrypt();
 
-    expect(await debug.decrypt64(await this.token1.balanceOf(this.auctionAddress))).to.equal("400");
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.auctionAddress))).to.equal("400");
 
     await this.auction
       .connect(this.signers.carol)
       .updateBidDec(1, tokenRate.handles[0], tokenRate.inputProof, tokenCount.handles[0], tokenCount.inputProof);
 
-    expect(await debug.decrypt64(await this.token1.balanceOf(this.auctionAddress))).to.equal("100");
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.auctionAddress))).to.equal("100");
   });
 
   it("reveal Bids", async function () {
@@ -173,10 +171,28 @@ describe("Blind Auction", function () {
 
     await initiateBid.call(this, this.signers.bob, 1, 2, 200);
     await initiateBid.call(this, this.signers.carol, 1, 3, 300);
-
+    await initiateBid.call(this, this.signers.dave, 1, 4, 400);
+    await initiateBid.call(this, this.signers.eve, 1, 5, 500);
+    await initiateBid.call(this, this.signers.fred, 1, 6, 600);
+    await initiateBid.call(this, this.signers.greg, 1, 7, 700);
+    await initiateBid.call(this, this.signers.hugo, 1, 8, 800);
+    await initiateBid.call(this, this.signers.ian, 1, 9, 900);
+    await initiateBid.call(this, this.signers.jane, 1, 10, 1000);
+    await initiateBid.call(this, this.signers.a, 1, 10, 1000);
+    await initiateBid.call(this, this.signers.b, 1, 10, 1000);
+    await initiateBid.call(this, this.signers.c, 1, 10, 1000);
+    await initiateBid.call(this, this.signers.d, 1, 10, 1000);
+    await initiateBid.call(this, this.signers.e, 1, 10, 1000);
+    await initiateBid.call(this, this.signers.f, 1, 10, 1000);
+    await initiateBid.call(this, this.signers.g, 1, 10, 1000);
+    await initiateBid.call(this, this.signers.h, 1, 10, 1000);
+    await initiateBid.call(this, this.signers.i, 1, 10, 1000);
+    await initiateBid.call(this, this.signers.j, 1, 10, 1000);
+    await initiateBid.call(this, this.signers.k, 1, 10, 1000);
+    await initiateBid.call(this, this.signers.l, 1, 10, 1000);
     // console.log(
-    //   "token1 balance of bob before",
-    //   await debug.decrypt64(await this.token1.balanceOf(this.signers.bob.address)),
+    //   "bidToken balance of bob before",
+    //   await debug.decrypt64(await this.bidToken.balanceOf(this.signers.bob.address)),
     // );
     // console.log(
     //   "AuctionToken balance of bob before",
@@ -184,8 +200,8 @@ describe("Blind Auction", function () {
     // );
 
     // console.log(
-    //   "token1 balance of carol before",
-    //   await debug.decrypt64(await this.token1.balanceOf(this.signers.carol.address)),
+    //   "bidToken balance of carol before",
+    //   await debug.decrypt64(await this.bidToken.balanceOf(this.signers.carol.address)),
     // );
     // console.log(
     //   "AuctionToken balance of carol before",
@@ -193,8 +209,8 @@ describe("Blind Auction", function () {
     // );
 
     // console.log(
-    //   "token1 balance of contract before",
-    //   await debug.decrypt64(await this.token1.balanceOf(this.auctionAddress)),
+    //   "bidToken balance of contract before",
+    //   await debug.decrypt64(await this.bidToken.balanceOf(this.auctionAddress)),
     // );
     // console.log(
     //   "AuctionToken balance of contract before",
@@ -202,19 +218,21 @@ describe("Blind Auction", function () {
     // );
 
     // console.log(
-    //   "token1 balanced of alice before",
-    //   await debug.decrypt64(await this.token1.balanceOf(this.signers.alice.address)),
+    //   "bidToken balanced of alice before",
+    //   await debug.decrypt64(await this.bidToken.balanceOf(this.signers.alice.address)),
     // );
     // console.log(
     //   "AuctionToken balanced of alice before",
     //   await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.alice.address)),
     // );
 
+    await this.auction.decryptAllbids(1);
+    await awaitAllDecryptionResults();
     await this.auction.connect(this.signers.alice).revealAuction(1);
 
     // console.log(
-    //   "token1 balance of bob after",
-    //   await debug.decrypt64(await this.token1.balanceOf(this.signers.bob.address)),
+    //   "bidToken balance of bob after",
+    //   await debug.decrypt64(await this.bidToken.balanceOf(this.signers.bob.address)),
     // );
     // console.log(
     //   "AuctionToken balance of bob after",
@@ -222,8 +240,8 @@ describe("Blind Auction", function () {
     // );
 
     // console.log(
-    //   "token1 balance of carol after",
-    //   await debug.decrypt64(await this.token1.balanceOf(this.signers.carol.address)),
+    //   "bidToken balance of carol after",
+    //   await debug.decrypt64(await this.bidToken.balanceOf(this.signers.carol.address)),
     // );
     // console.log(
     //   "AuctionToken balance of carol after",
@@ -231,8 +249,8 @@ describe("Blind Auction", function () {
     // );
 
     // console.log(
-    //   "token1 balance of contract after",
-    //   await debug.decrypt64(await this.token1.balanceOf(this.auctionAddress)),
+    //   "bidToken balance of contract after",
+    //   await debug.decrypt64(await this.bidToken.balanceOf(this.auctionAddress)),
     // );
     // console.log(
     //   "AuctionToken balance of contract after",
@@ -240,8 +258,8 @@ describe("Blind Auction", function () {
     // );
 
     // console.log(
-    //   "token1 balanced of alice after",
-    //   await debug.decrypt64(await this.token1.balanceOf(this.signers.alice.address)),
+    //   "bidToken balanced of alice after",
+    //   await debug.decrypt64(await this.bidToken.balanceOf(this.signers.alice.address)),
     // );
   });
 });

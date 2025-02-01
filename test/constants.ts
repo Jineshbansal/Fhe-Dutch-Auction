@@ -7,4 +7,27 @@ export const GATEWAYCONTRACT_ADDRESS = "0x33347831500f1e73f0cccbb95c9f86b94d7b11
 export const PRIVATE_KEY_KMS_SIGNER = "388b7680e4e1afa06efbfd45cdd1fe39f3c6af381df6555a19661f283b97de91";
 export const PRIVATE_KEY_COPROCESSOR_ACCOUNT = "7ec8ada6642fc4ccfb7729bc29c17cf8d21b61abd5642d1db992c0b8672ab901";
 export const GATEWAY_URL = "https://gateway.sepolia.zama.ai/";
-export const ACCOUNT_NAMES = ["alice", "bob", "carol", "dave", "eve", "fred", "greg", "hugo", "ian", "jane"];
+export const ACCOUNT_NAMES = [
+  "alice",
+  "bob",
+  "carol",
+  "dave",
+  "eve",
+  "fred",
+  "greg",
+  "hugo",
+  "ian",
+  "jane",
+  "a",
+  "b",
+  "c",
+  "d",
+  "e",
+  "f",
+  "g",
+  "h",
+  "i",
+  "j",
+  "k",
+  "l",
+];
