@@ -166,6 +166,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         // require(auctions[_auctionId].endTime < block.timestamp);
         uint256 auctionId = _auctionId;
         require(auctions[auctionId].isActive == true, "Auction is not active");
+        require(auctionPlaintextBids[_auctionId].length == auctionBids[_auctionId].length, "All bids are not revealed yet");
         BidPlaintext[] memory totalBids = auctionPlaintextBids[_auctionId];
         BidPlaintextQuantity[] memory totalBidsQuantity = new BidPlaintextQuantity[](totalBids.length);
         for (uint64 i = 0; i < totalBids.length; i++) {
