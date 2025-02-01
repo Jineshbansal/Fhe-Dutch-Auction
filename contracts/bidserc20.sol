@@ -143,13 +143,13 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         addParamsUint256(requestID, auctionId);
     }
 
-    function callbackMixed(uint256 requestID, uint64 perTokenRate, uint64 tokenCount) public onlyGateway returns (uint64) {
-        uint256[] memory params = getParamsUint256(requestID);
-        address[] memory paramsAddress = getParamsAddress(requestID);
-        address bidId = paramsAddress[0];
-        uint256 auctionId = params[0];
-        auctionPlaintextBids[auctionId].push(BidPlaintext(bidId, auctionId, perTokenRate, tokenCount));
-    }
+//     function callbackMixed(uint256 requestID, uint64 perTokenRate, uint64 tokenCount) public onlyGateway returns (uint64) {
+//         uint256[] memory params = getParamsUint256(requestID);
+//         address[] memory paramsAddress = getParamsAddress(requestID);
+//         address bidId = paramsAddress[0];
+//         uint256 auctionId = params[0];
+//         auctionPlaintextBids[auctionId].push(BidPlaintext(bidId, auctionId, perTokenRate, tokenCount));
+//     }
 
     function decryptAllbids(uint256 _auctionId) public{
         require(msg.sender==auctions[_auctionId].auctionOwner);

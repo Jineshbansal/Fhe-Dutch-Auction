@@ -171,9 +171,28 @@ describe("Blind Auction", function () {
   it("reveal Bids", async function () {
     await createAuction.call(this, "Willins".toString());
 
-    await initiateBid.call(this, this.signers.bob, 1, 2, 200);
-    await initiateBid.call(this, this.signers.carol, 1, 3, 300);
+    await initiateBid.call(this, this.signers.bob, 1, 3, 100);
+    await initiateBid.call(this, this.signers.carol, 1, 3, 100);
+    await initiateBid.call(this, this.signers.alice, 1, 3, 100);
+    // await initiateBid.call(this, this.signers.dave, 1, 4, 150);
+    // await initiateBid.call(this, this.signers.eve, 1, 5, 200);
+    await initiateBid.call(this, this.signers.dave, 1, 4, 150);
+    await initiateBid.call(this, this.signers.eve, 1, 5, 200);
+    // await initiateBid.call(this, this.signers.fred, 1, 6, 250);
+    // await initiateBid.call(this, this.signers.greg, 1, 7, 300);
+    // await initiateBid.call(this, this.signers.hugo, 1, 7, 300);
+    await initiateBid.call(this, this.signers.ian, 1, 7, 300);
+    // await initiateBid.call(this, this.signers.jane, 1, 7, 300);
 
+    
+    const randomBids = [];
+    for (let i = 0; i < 0; i++) {
+      const randomBidder = this.signers[["bob", "carol", "alice"][Math.floor(Math.random() * 3)]];
+      const randomTokenRate = Math.floor(Math.random() * 10) + 1;
+      const randomTokenAsked = Math.floor(Math.random() * 100) + 1;
+      randomBids.push(initiateBid.call(this, randomBidder, 1, randomTokenRate, randomTokenAsked));
+    }
+    await Promise.all(randomBids);
     // console.log(
     //   "token1 balance of bob before",
     //   await debug.decrypt64(await this.token1.balanceOf(this.signers.bob.address)),
@@ -210,34 +229,43 @@ describe("Blind Auction", function () {
     //   await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.alice.address)),
     // );
 
-    await this.auction.connect(this.signers.alice).revealAuction(1);
+    await this.auction.connect(this.signers.alice).getFinalPrice(1);
+    const price=await debug.decrypt64(await this.auction.connect(this.signers.alice).getFromFinalList(1));
+    console.log("Final Price",price);
+
+    // console.log("Final Price",await debug.decrypt64(await this.auction.connect(this.signers.alice).getFinalPrice(1)));
+    // await this.auction.connect(this.signers.alice).revealAuction(1);
 
     // console.log(
     //   "token1 balance of bob after",
     //   await debug.decrypt64(await this.token1.balanceOf(this.signers.bob.address)),
     // );
-    // console.log(
-    //   "AuctionToken balance of bob after",
-    //   await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.bob.address)),
-    // );
+    console.log(
+      "AuctionToken balance of bob after",
+      await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.bob.address)),
+    );
+    console.log(
+      "AuctionToken balance of alice after",
+      await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.alice.address)),
+    );
 
     // console.log(
     //   "token1 balance of carol after",
     //   await debug.decrypt64(await this.token1.balanceOf(this.signers.carol.address)),
     // );
-    // console.log(
-    //   "AuctionToken balance of carol after",
-    //   await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.carol.address)),
-    // );
+    console.log(
+      "AuctionToken balance of carol after",
+      await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.carol.address)),
+    );
 
-    // console.log(
-    //   "token1 balance of contract after",
-    //   await debug.decrypt64(await this.token1.balanceOf(this.auctionAddress)),
-    // );
-    // console.log(
-    //   "AuctionToken balance of contract after",
-    //   await debug.decrypt64(await this.auctionToken.balanceOf(this.auctionAddress)),
-    // );
+    console.log(
+      "token1 balance of contract after",
+      await debug.decrypt64(await this.token1.balanceOf(this.auctionAddress)),
+    );
+    console.log(
+      "AuctionToken balance of contract after",
+      await debug.decrypt64(await this.auctionToken.balanceOf(this.auctionAddress)),
+    );
 
     // console.log(
     //   "token1 balanced of alice after",
