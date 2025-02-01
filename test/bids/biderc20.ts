@@ -103,6 +103,7 @@ describe("Blind Auction ERC20", function () {
     await initiateBid.call(this, this.signers.greg, 1, 7, 700);
     await initiateBid.call(this, this.signers.hugo, 1, 8, 800);
     await initiateBid.call(this, this.signers.ian, 1, 9, 900);
+    await initiateBid.call(this, this.signers.jane, 1, 10, 1000);
 
     const totalBidTokens = 2 * 200 + 3 * 300 + 4 * 400 + 5 * 500 + 6 * 600 + 7 * 700 + 8 * 800 + 9 * 900 + 10 * 1000;
     expect(await debug.decrypt64(await this.bidToken.balanceOf(this.auctionAddress))).to.equal(totalBidTokens);
