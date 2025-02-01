@@ -35,6 +35,12 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
         euint64 perTokenRate;
         euint64 tokenAsked;
     }
+    struct BidPlaintext {
+        address bidId;
+        uint256 auctionId;
+        euint64 perTokenRate;
+        euint64 tokenAsked;
+    }
 
     struct BidQuantity {
         euint64 perTokenRate;
@@ -44,9 +50,9 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
 
     mapping(address => Auction[]) public MyAuctions; // drop after revealAuction for _auctionId           --
     mapping(uint256 => Auction) public auctions; // drop after revealAuction for _auctionId           --
-    mapping(uint256 => Bid[]) public auctionBids; // drop after revealAuction for _auctionId           --
+    mapping(uint256 => BidPlaintext[]) private auctionBids; // drop after revealAuction for _auctionId           --
     Auction[] public allAuctions; // drop after claimLeftAuctionStake for _auctionId   --
-
+                    --
     mapping(address => Bid[]) myBids; // drop in claimWonAuctionPrize and claimLostAuctionPrize --
 
     function createAuction(
@@ -76,10 +82,7 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
         allAuctions.push(newAuction);
 
         // Transfer the auction funds
-        euint64 encryptedAmount = TFHE.asEuint64(_tokenCount);
-        TFHE.allowThis(encryptedAmount);
-        TFHE.allowTransient(encryptedAmount, _auctionTokenAddress);
-        require(ConfidentialERC20(_auctionTokenAddress).transferFrom(msg.sender, address(this), encryptedAmount));
+        require(IERC20(_auctionTokenAddress).transferFrom(msg.sender, address(this), _tokenCount), "Transfer failed");
         auctionCount++;
     }
 
@@ -131,7 +134,7 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
         // require(auctions[_auctionId].endTime < block.timestamp);
         uint256 auctionId = _auctionId;
         require(auctions[auctionId].isActive == true, "Auction is not active");
-        Bid[] memory totalBids = auctionBids[_auctionId];
+        BidPlaintext[] memory totalBids = auctionBids[_auctionId];
         BidQuantity[] memory totalBidsQuantity = new BidQuantity[](totalBids.length);
         for (uint64 i = 0; i < totalBids.length; i++) {
             TFHE.allowThis(totalBids[i].perTokenRate);
