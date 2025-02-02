@@ -242,6 +242,8 @@ contract BlindAuction is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, Gatew
 
             ebool isTrue = TFHE.gt(tempTotalTokens, 0);
             TFHE.allowThis(isTrue);
+            isTrue=TFHE.and(isTrue,TFHE.ge(totalBids[i].perTokenRate, finalPrice));
+            TFHE.allowThis(isTrue);
             tempTotalTokens = TFHE.select(isTrue, TFHE.sub(tempTotalTokens, bidCount), tempTotalTokens);
             TFHE.allowThis(tempTotalTokens);
             TFHE.allowTransient(bidCount, auctions[auctionId].auctionTokenAddress);
