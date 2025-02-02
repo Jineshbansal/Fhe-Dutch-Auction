@@ -1,10 +1,13 @@
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
 
+
+
 import { awaitAllDecryptionResults, initGateway } from "../asyncDecrypt";
 import { createInstance } from "../instance";
 import { getSigners, initSigners } from "../signers";
 import { debug } from "../utils";
+
 
 describe("Blind Auction ERC20", function () {
   before(async function () {
@@ -39,8 +42,6 @@ describe("Blind Auction ERC20", function () {
     await this.bidToken.mint(this.signers.h);
     await this.bidToken.mint(this.signers.i);
     await this.bidToken.mint(this.signers.j);
-    await this.bidToken.mint(this.signers.k);
-    await this.bidToken.mint(this.signers.l);
 
     const auctionTokenFactory = await ethers.getContractFactory("NativeERC20");
     this.auctionToken = await auctionTokenFactory.connect(this.signers.alice).deploy();
@@ -189,8 +190,6 @@ describe("Blind Auction ERC20", function () {
     await initiateBid.call(this, this.signers.h, 1, 10, 1000);
     await initiateBid.call(this, this.signers.i, 1, 10, 1000);
     await initiateBid.call(this, this.signers.j, 1, 10, 1000);
-    await initiateBid.call(this, this.signers.k, 1, 10, 1000);
-    await initiateBid.call(this, this.signers.l, 1, 10, 1000);
     // console.log(
     //   "bidToken balance of bob before",
     //   await debug.decrypt64(await this.bidToken.balanceOf(this.signers.bob.address)),

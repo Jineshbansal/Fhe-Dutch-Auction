@@ -28,6 +28,4 @@ export const ACCOUNT_NAMES = [
   "h",
   "i",
   "j",
-  "k",
-  "l",
 ];
