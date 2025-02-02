@@ -54,7 +54,9 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
     mapping(address => Auction[]) public MyAuctions; // drop after revealAuction for _auctionId           --
     mapping(uint256 => Auction) public auctions; // drop after revealAuction for _auctionId           --
     mapping(uint256 => Bid[]) private auctionBids; // drop after revealAuction for _auctionId           --
-    Auction[] public allAuctions; // drop after claimLeftAuctionStake for _auctionId   --
+    mapping(uint256 => uint64) public auctionBidsEdgeWinner; // drop after revealAuction for _auctionId
+    mapping(uint256 => uint64) public auctionAmountLeftForEdgeWinner; // drop after revealAuction for _auctionId
+    mapping(uint256 => uint64) public auctionFinalPrice; // drop after revealAuction for _auctionId
     mapping(uint256 => BidPlaintext[]) public auctionPlaintextBids; // drop after revealAuction for _auctionId
     mapping(address => Bid[]) myBids; // drop in claimWonAuctionPrize and claimLostAuctionPrize --
 
@@ -82,7 +84,6 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
 
         MyAuctions[msg.sender].push(newAuction);
         auctions[auctionCount] = newAuction;
-        allAuctions.push(newAuction);
 
         // Transfer the auction funds
         require(IERC20(_auctionTokenAddress).transferFrom(msg.sender, address(this), _tokenCount), "Transfer failed");
@@ -175,106 +176,25 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         }
     }
 
-    function revealAuction2(uint256 _auctionId) public {
-        require(auctions[_auctionId].isActive, "Auction is not active");
-        require(
-            auctionPlaintextBids[_auctionId].length == auctionBids[_auctionId].length,
-            "All bids are not revealed yet"
-        );
-
-        BidPlaintext[] memory totalBids = auctionPlaintextBids[_auctionId];
-        uint64 totalTokens = auctions[_auctionId].tokenCount;
-        uint64 tempTotalTokens = totalTokens;
-        uint64 finalPrice = 0;
-
-        // Step 1: Copy bids into a new array for sorting
-        BidPlaintextQuantity[] memory totalBidsQuantity = new BidPlaintextQuantity[](totalBids.length);
-        for (uint64 i = 0; i < totalBids.length; i++) {
-            totalBidsQuantity[i] = BidPlaintextQuantity(totalBids[i].perTokenRate, totalBids[i].tokenAsked);
-        }
-
-        // Step 2: Sort bids by perTokenRate (Descending Order)
-        for (uint i = 0; i < totalBids.length; i++) {
-            for (uint j = 0; j < totalBids.length - i - 1; j++) {
-                if (totalBidsQuantity[j].perTokenRate < totalBidsQuantity[j + 1].perTokenRate) {
-                    (totalBidsQuantity[j], totalBidsQuantity[j + 1]) = (totalBidsQuantity[j + 1], totalBidsQuantity[j]);
-                }
-            }
-        }
-
-        // Step 3: Determine the Clearing Price
-        for (uint64 i = 0; i < totalBids.length; i++) {
-            if (tempTotalTokens > 0 && totalBidsQuantity[i].perTokenRate > 0) {
-                uint64 bidCount = totalBidsQuantity[i].tokenAsked;
-                if (bidCount > tempTotalTokens) {
-                    bidCount = tempTotalTokens;
-                }
-                tempTotalTokens -= bidCount;
-                finalPrice = totalBidsQuantity[i].perTokenRate;
-            } else {
-                break;
-            }
-        }
-
-        // Step 4: Distribute Auction Tokens to Winning Bidders
-        tempTotalTokens = totalTokens;
-        for (uint64 i = 0; i < totalBids.length; i++) {
-            uint64 bidCount = totalBids[i].tokenAsked;
-            if (bidCount > tempTotalTokens) {
-                bidCount = tempTotalTokens;
-            }
-
-            if (tempTotalTokens > 0) {
-                tempTotalTokens -= bidCount;
-                IERC20(auctions[_auctionId].auctionTokenAddress).transfer(totalBids[i].bidId, bidCount);
-
-                uint64 refundAmount = totalBids[i].tokenAsked * totalBids[i].perTokenRate - bidCount * finalPrice;
-                euint64 refundAmountConf = TFHE.asEuint64(refundAmount);
-                TFHE.allowTransient(refundAmountConf, auctions[_auctionId].bidtokenAddress);
-
-                ConfidentialERC20(auctions[_auctionId].bidtokenAddress).transfer(totalBids[i].bidId, refundAmountConf);
-            }
-        }
-
-        // Step 5: Transfer Remaining Funds to Auction Owner
-        uint64 soldTokens = totalTokens - tempTotalTokens;
-        euint64 totalPayment = TFHE.asEuint64(soldTokens * finalPrice);
-
-        TFHE.allowTransient(totalPayment, auctions[_auctionId].bidtokenAddress);
-        ConfidentialERC20(auctions[_auctionId].bidtokenAddress).transfer(
-            auctions[_auctionId].auctionOwner,
-            totalPayment
-        );
-
-        // Step 6: Refund Unsold Auction Tokens to Owner
-        IERC20(auctions[_auctionId].auctionTokenAddress).transfer(auctions[_auctionId].auctionOwner, tempTotalTokens);
-
-        // Step 7: Mark Auction as Inactive
-        auctions[_auctionId].isActive = false;
+    function getbidslength(uint256 _auctionId) public view returns (uint256) {
+        return auctionPlaintextBids[_auctionId].length;
     }
 
-    function revealAuction(uint256 _auctionId) public {
-        // require(auctions[_auctionId].endTime < block.timestamp);
+    function getFinalPrice(uint256 _auctionId) public view returns(uint64){
         uint256 auctionId = _auctionId;
         require(auctions[auctionId].isActive == true, "Auction is not active");
-        require(auctionBids[auctionId].length > 0, "No bids to reveal");
         require(
             auctionPlaintextBids[_auctionId].length == auctionBids[_auctionId].length,
             "All bids are not revealed yet"
         );
         BidPlaintext[] memory totalBids = auctionPlaintextBids[_auctionId];
-        BidPlaintextQuantity[] memory totalBidsQuantity = new BidPlaintextQuantity[](totalBids.length);
-        for (uint64 i = 0; i < totalBids.length; i++) {
-            totalBidsQuantity[i].perTokenRate = totalBids[i].perTokenRate;
-            totalBidsQuantity[i].tokenAsked = totalBids[i].tokenAsked;
-        }
-
+       
         for (uint i = 0; i < totalBids.length; i++) {
             for (uint j = 0; j < totalBids.length - i - 1; j++) {
-                if (totalBidsQuantity[j].perTokenRate < totalBidsQuantity[j + 1].perTokenRate) {
-                    BidPlaintextQuantity memory temp = totalBidsQuantity[j];
-                    totalBidsQuantity[j] = totalBidsQuantity[j + 1];
-                    totalBidsQuantity[j + 1] = temp;
+                if (totalBids[j].perTokenRate < totalBids[j + 1].perTokenRate) {
+                    BidPlaintext memory temp = totalBids[j];
+                    totalBids[j] = totalBids[j + 1];
+                    totalBids[j + 1] = temp;
                 }
             }
         }
@@ -287,57 +207,138 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
 
         for (uint64 i = 0; i < totalBids.length; i++) {
             if (tempTotalTokens > 0) {
-                if (totalBidsQuantity[i].perTokenRate == 0) {
+                if (totalBids[i].perTokenRate == 0) {
                     continue;
                 }
-                uint64 bidCount = totalBidsQuantity[i].tokenAsked;
+                uint64 bidCount = totalBids[i].tokenAsked;
                 if (bidCount > tempTotalTokens) {
                     bidCount = tempTotalTokens;
                 }
                 tempTotalTokens = tempTotalTokens - bidCount;
-                finalPrice = totalBidsQuantity[i].perTokenRate;
+                finalPrice = totalBids[i].perTokenRate;
             } else {
                 break;
             }
         }
-        uint256 auctionAddress = auctionId;
-        tempTotalTokens = totalTokens;
+
+        uint64 sellTokensWithProfit;
+        
         for (uint64 i = 0; i < totalBids.length; i++) {
-            uint64 bidCount = totalBids[i].tokenAsked;
-            if (bidCount > tempTotalTokens) {
-                bidCount = tempTotalTokens;
+            if(totalBids[i].perTokenRate>finalPrice){
+                sellTokensWithProfit+=totalBids[i].tokenAsked;
             }
-            if (tempTotalTokens > 0 && totalBids[i].perTokenRate >= finalPrice) {
-                tempTotalTokens = tempTotalTokens - bidCount;
-                IERC20(auctions[auctionAddress].auctionTokenAddress).transfer(totalBids[i].bidId, bidCount);
-                uint64 x = totalBids[i].tokenAsked * totalBids[i].perTokenRate;
-                uint64 y = bidCount * finalPrice;
-                euint64 z = TFHE.asEuint64(x - y);
-                TFHE.allowTransient(z, auctions[auctionAddress].bidtokenAddress);
-                ConfidentialERC20(auctions[auctionAddress].bidtokenAddress).transfer(totalBids[i].bidId, z);
-            } else {
-                uint64 x = totalBids[i].tokenAsked * totalBids[i].perTokenRate;
-                euint64 z = TFHE.asEuint64(x);
-                TFHE.allowTransient(z, auctions[auctionAddress].bidtokenAddress);
-                ConfidentialERC20(auctions[auctionAddress].bidtokenAddress).transfer(totalBids[i].bidId, z);
+            if(finalPrice==totalBids[i].perTokenRate){
+                auctionBidsEdgeWinner[_auctionId]+=totalBids[i].tokenAsked;
             }
         }
+        if(tempTotalTokens>0){
+            auctionAmountLeftForEdgeWinner[_auctionId]=(totalTokens - tempTotalTokens)-sellTokensWithProfit;
+        }else{
+            auctionAmountLeftForEdgeWinner[_auctionId]=totalTokens-sellTokensWithProfit;
+        }
+        auctions[_auctionId].isActive = false;
+        auctionFinalPrice[_auctionId] = finalPrice;
         uint64 sellTokens = totalTokens - tempTotalTokens;
-
         euint64 toTransfer = TFHE.asEuint64(sellTokens * finalPrice);
-
-        TFHE.allowTransient(toTransfer, auctions[auctionAddress].bidtokenAddress);
-        ConfidentialERC20(auctions[auctionAddress].bidtokenAddress).transfer(
-            auctions[auctionAddress].auctionOwner,
+        TFHE.allowTransient(toTransfer, auctions[_auctionId].bidtokenAddress);
+        ConfidentialERC20(auctions[_auctionId].bidtokenAddress).transfer(
+            auctions[_auctionId].auctionOwner,
             toTransfer
         );
 
-        IERC20(auctions[auctionAddress].auctionTokenAddress).transfer(
-            auctions[auctionAddress].auctionOwner,
+        IERC20(auctions[_auctionId].auctionTokenAddress).transfer(
+            auctions[_auctionId].auctionOwner,
             tempTotalTokens
         );
 
-        auctions[auctionAddress].isActive = false;
+        return finalPrice;
+    }
+
+    function getReward(uint256 _auctionId) public{
+        require(auctions[_auctionId].isActive == false, "Auction is still active");
+        uint256 auctionId = _auctionId;
+        uint64 finalPrice= auctionFinalPrice[_auctionId];
+        BidPlaintext [] memory totalBids = auctionPlaintextBids[_auctionId];
+        for (uint i = 0; i < totalBids.length; i++) {
+            if(totalBids[i].bidId==msg.sender){
+                if(totalBids[i].perTokenRate>finalPrice){
+                    uint64 x = totalBids[i].tokenAsked * totalBids[i].perTokenRate;
+                    uint64 y = totalBids[i].tokenAsked * finalPrice;
+                    euint64 z = TFHE.asEuint64(x - y);
+                    TFHE.allowTransient(z, auctions[auctionId].bidtokenAddress);
+                    ConfidentialERC20(auctions[auctionId].bidtokenAddress).transfer(totalBids[i].bidId, z);
+                    IERC20(auctions[auctionId].auctionTokenAddress).transfer(totalBids[i].bidId, totalBids[i].tokenAsked);
+                }else if(totalBids[i].perTokenRate==finalPrice){
+                    uint64 tokenGet=(totalBids[i].tokenAsked*auctionAmountLeftForEdgeWinner[_auctionId])/auctionBidsEdgeWinner[_auctionId];
+                    uint64 x = totalBids[i].tokenAsked * totalBids[i].perTokenRate;
+                    uint64 y = tokenGet * finalPrice;
+                    euint64 z = TFHE.asEuint64(x - y);
+                    TFHE.allowTransient(z, auctions[auctionId].bidtokenAddress);
+                    ConfidentialERC20(auctions[auctionId].bidtokenAddress).transfer(totalBids[i].bidId, z);
+                    IERC20(auctions[auctionId].auctionTokenAddress).transfer(totalBids[i].bidId, tokenGet);
+                    
+                }else{
+                    uint64 x = totalBids[i].tokenAsked * totalBids[i].perTokenRate;
+                    euint64 z = TFHE.asEuint64(x);
+                    TFHE.allowTransient(z, auctions[auctionId].bidtokenAddress);
+                    ConfidentialERC20(auctions[auctionId].bidtokenAddress).transfer(totalBids[i].bidId, z);
+                }
+            }
+        }
+    }
+    
+    function revealAuction(uint256 _auctionId) public {
+        // // require(auctions[_auctionId].endTime < block.timestamp);
+        // BidPlaintext[] memory totalBids = auctionPlaintextBids[_auctionId];
+        // uint256 auctionId = _auctionId;
+        // uint256 auctionAddress = auctionId;
+        // uint64 finalPrice=getFinalPrice(_auctionId);
+        // uint64 totalTokens = auctions[_auctionId].tokenCount;
+
+
+        // uint64 count=0;
+
+        // uint64 tempTotalTokens = totalTokens;
+        // for (uint64 i = 0; i < totalBids.length; i++) {
+        //     uint64 bidCount = totalBids[i].tokenAsked;
+        //     if (bidCount > tempTotalTokens) {
+        //         bidCount = tempTotalTokens;
+        //     }
+        //     if (tempTotalTokens > 0 && totalBids[i].perTokenRate >= finalPrice) {
+                
+        //         tempTotalTokens = tempTotalTokens - bidCount;
+        //         IERC20(auctions[auctionAddress].auctionTokenAddress).transfer(totalBids[i].bidId, bidCount);
+        //         uint64 x = totalBids[i].tokenAsked * totalBids[i].perTokenRate;
+        //         uint64 y = bidCount * finalPrice;
+        //         euint64 z = TFHE.asEuint64(x - y);
+        //         require((x-y)==0,"Z is not equal to 0");
+        //         TFHE.allowTransient(z, auctions[auctionAddress].bidtokenAddress);
+        //         ConfidentialERC20(auctions[auctionAddress].bidtokenAddress).transfer(totalBids[i].bidId, z);
+        //     }else{
+        //         count++;
+        //         uint64 x = totalBids[i].tokenAsked * totalBids[i].perTokenRate;
+        //         euint64 z = TFHE.asEuint64(x);
+        //         TFHE.allowTransient(z, auctions[auctionAddress].bidtokenAddress);
+        //         ConfidentialERC20(auctions[auctionAddress].bidtokenAddress).transfer(totalBids[i].bidId, z);
+        //     }
+        // }
+        // // require(count==16,"Count is not equal to 16");
+        // uint64 sellTokens = totalTokens - tempTotalTokens;
+        // require(sellTokens == totalTokens, "Sell tokens is not equal to total tokens");
+        // euint64 toTransfer = TFHE.asEuint64(sellTokens * finalPrice);
+
+        // TFHE.allowTransient(toTransfer, auctions[auctionAddress].bidtokenAddress);
+        // ConfidentialERC20(auctions[auctionAddress].bidtokenAddress).transfer(
+        //     auctions[auctionAddress].auctionOwner,
+        //     toTransfer
+        // );
+
+        // IERC20(auctions[auctionAddress].auctionTokenAddress).transfer(
+        //     auctions[auctionAddress].auctionOwner,
+        //     tempTotalTokens
+        // );
+
+        // auctions[auctionAddress].isActive = false;
     }
 
     function updateBidInc(
@@ -413,4 +414,29 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
             }
         }
     }
+
+    // --------------UTILS----------------
+    // function getAuction(address _creator) public view returns (Auction memory) {
+    //     return auctions[_creator];
+    // }
+
+    // function getAuctions() public view returns (Auction[] memory) {
+    //     return allAuctions;
+    // }
+
+    // function hasAuction() public view returns (bool) {
+    //     return auctions[msg.sender].auctionId == msg.sender;
+    // }
+
+    // function getMyBids() public view returns (Bid[] memory) {
+    //     return myBids[msg.sender];
+    // }
+
+    // function getBidsForAuction(address _auctionId) public view returns (Bid[] memory) {
+    //     return auctionBids[_auctionId];
+    // }
+
+    // --------------MAJORS------------------
+
+    // One person can create only one auction
 }
