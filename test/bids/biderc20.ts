@@ -1,13 +1,10 @@
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
 
-
-
 import { awaitAllDecryptionResults, initGateway } from "../asyncDecrypt";
 import { createInstance } from "../instance";
 import { getSigners, initSigners } from "../signers";
 import { debug } from "../utils";
-
 
 describe("Blind Auction ERC20", function () {
   before(async function () {
@@ -172,41 +169,43 @@ describe("Blind Auction ERC20", function () {
     await createAuction.call(this, "Willins".toString());
 
     await initiateBid.call(this, this.signers.bob, 1, 2, 200);
-    await initiateBid.call(this, this.signers.carol, 1, 3, 300);
-    await initiateBid.call(this, this.signers.dave, 1, 4, 400);
-    await initiateBid.call(this, this.signers.eve, 1, 5, 500);
-    await initiateBid.call(this, this.signers.fred, 1, 6, 600);
-    await initiateBid.call(this, this.signers.greg, 1, 7, 700);
-    await initiateBid.call(this, this.signers.hugo, 1, 8, 800);
-    await initiateBid.call(this, this.signers.ian, 1, 9, 900);
-    await initiateBid.call(this, this.signers.jane, 1, 10, 1000);
-    await initiateBid.call(this, this.signers.a, 1, 10, 1000);
-    await initiateBid.call(this, this.signers.b, 1, 10, 1000);
-    await initiateBid.call(this, this.signers.c, 1, 10, 1000);
-    await initiateBid.call(this, this.signers.d, 1, 10, 1000);
-    await initiateBid.call(this, this.signers.e, 1, 10, 1000);
-    await initiateBid.call(this, this.signers.f, 1, 10, 1000);
-    await initiateBid.call(this, this.signers.g, 1, 10, 1000);
-    await initiateBid.call(this, this.signers.h, 1, 10, 1000);
-    await initiateBid.call(this, this.signers.i, 1, 10, 1000);
-    await initiateBid.call(this, this.signers.j, 1, 10, 1000);
-    // console.log(
-    //   "bidToken balance of bob before",
-    //   await debug.decrypt64(await this.bidToken.balanceOf(this.signers.bob.address)),
-    // );
+    await initiateBid.call(this, this.signers.carol, 1, 3, 1000);
+    // await initiateBid.call(this, this.signers.dave, 1, 4, 500);
+    // await initiateBid.call(this, this.signers.eve, 1, 5, 500);
+    // await initiateBid.call(this, this.signers.fred, 1, 6, 600);
+    // await initiateBid.call(this, this.signers.greg, 1, 7, 700);
+    // await initiateBid.call(this, this.signers.hugo, 1, 8, 800);
+    // await initiateBid.call(this, this.signers.ian, 1, 9, 900);
+    // await initiateBid.call(this, this.signers.jane, 1, 10, 1000);
+    // await initiateBid.call(this, this.signers.a, 1, 10, 1000);
+    // await initiateBid.call(this, this.signers.b, 1, 10, 1000);
+    // await initiateBid.call(this, this.signers.c, 1, 10, 1000);
+    // await initiateBid.call(this, this.signers.d, 1, 10, 1000);
+    // await initiateBid.call(this, this.signers.e, 1, 10, 1000);
+    // await initiateBid.call(this, this.signers.f, 1, 10, 1000);
+    // await initiateBid.call(this, this.signers.g, 1, 10, 1000);
+    // await initiateBid.call(this, this.signers.h, 1, 10, 1000);
+    // await initiateBid.call(this, this.signers.i, 1, 10, 1000);
+    // await initiateBid.call(this, this.signers.j, 1, 10, 1000);
+    console.log(
+      "bidToken balance of bob before",
+      await debug.decrypt64(await this.bidToken.balanceOf(this.signers.bob.address)),
+    );
     // console.log(
     //   "AuctionToken balance of bob before",
     //   await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.bob.address)),
     // );
 
-    // console.log(
-    //   "bidToken balance of carol before",
-    //   await debug.decrypt64(await this.bidToken.balanceOf(this.signers.carol.address)),
-    // );
+    console.log(
+      "bidToken balance of carol before",
+      await debug.decrypt64(await this.bidToken.balanceOf(this.signers.carol.address)),
+    );
     // console.log(
     //   "AuctionToken balance of carol before",
     //   await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.carol.address)),
     // );
+
+    console.log("AuctionToken balance of contract before", await this.auctionToken.balanceOf(this.auctionAddress));
 
     // console.log(
     //   "bidToken balance of contract before",
@@ -230,32 +229,24 @@ describe("Blind Auction ERC20", function () {
     await awaitAllDecryptionResults();
     await this.auction.connect(this.signers.alice).revealAuction(1);
 
-    // console.log(
-    //   "bidToken balance of bob after",
-    //   await debug.decrypt64(await this.bidToken.balanceOf(this.signers.bob.address)),
-    // );
-    // console.log(
-    //   "AuctionToken balance of bob after",
-    //   await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.bob.address)),
-    // );
+    console.log(
+      "bidToken balance of bob after",
+      await debug.decrypt64(await this.bidToken.balanceOf(this.signers.bob.address)),
+    );
 
-    // console.log(
-    //   "bidToken balance of carol after",
-    //   await debug.decrypt64(await this.bidToken.balanceOf(this.signers.carol.address)),
-    // );
-    // console.log(
-    //   "AuctionToken balance of carol after",
-    //   await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.carol.address)),
-    // );
+    console.log("AuctionToken balance of bob after", await this.auctionToken.balanceOf(this.signers.bob.address));
 
-    // console.log(
-    //   "bidToken balance of contract after",
-    //   await debug.decrypt64(await this.bidToken.balanceOf(this.auctionAddress)),
-    // );
-    // console.log(
-    //   "AuctionToken balance of contract after",
-    //   await debug.decrypt64(await this.auctionToken.balanceOf(this.auctionAddress)),
-    // );
+    console.log(
+      "bidToken balance of carol after",
+      await debug.decrypt64(await this.bidToken.balanceOf(this.signers.carol.address)),
+    );
+    console.log("AuctionToken balance of carol after", await this.auctionToken.balanceOf(this.signers.carol.address));
+
+    console.log(
+      "bidToken balance of contract after",
+      await debug.decrypt64(await this.bidToken.balanceOf(this.auctionAddress)),
+    );
+    console.log("AuctionToken balance of contract after", await this.auctionToken.balanceOf(this.auctionAddress));
 
     // console.log(
     //   "bidToken balanced of alice after",
