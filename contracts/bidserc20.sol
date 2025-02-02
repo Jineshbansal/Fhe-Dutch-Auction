@@ -314,7 +314,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
                 euint64 z = TFHE.asEuint64(x - y);
                 TFHE.allowTransient(z, auctions[auctionAddress].bidtokenAddress);
                 ConfidentialERC20(auctions[auctionAddress].bidtokenAddress).transfer(totalBids[i].bidId, z);
-            }else if(tempTotalTokens>0){
+            }else{
                 uint64 x = totalBids[i].tokenAsked * totalBids[i].perTokenRate;
                 euint64 z = TFHE.asEuint64(x);
                 TFHE.allowTransient(z, auctions[auctionAddress].bidtokenAddress);
