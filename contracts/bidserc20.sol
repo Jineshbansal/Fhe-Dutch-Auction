@@ -257,6 +257,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         // require(auctions[_auctionId].endTime < block.timestamp);
         uint256 auctionId = _auctionId;
         require(auctions[auctionId].isActive == true, "Auction is not active");
+        require(auctionBids[auctionId].length > 0, "No bids to reveal");
         require(
             auctionPlaintextBids[_auctionId].length == auctionBids[_auctionId].length,
             "All bids are not revealed yet"
@@ -314,7 +315,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
                 euint64 z = TFHE.asEuint64(x - y);
                 TFHE.allowTransient(z, auctions[auctionAddress].bidtokenAddress);
                 ConfidentialERC20(auctions[auctionAddress].bidtokenAddress).transfer(totalBids[i].bidId, z);
-            }else{
+            } else {
                 uint64 x = totalBids[i].tokenAsked * totalBids[i].perTokenRate;
                 euint64 z = TFHE.asEuint64(x);
                 TFHE.allowTransient(z, auctions[auctionAddress].bidtokenAddress);
@@ -412,29 +413,4 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
             }
         }
     }
-
-    // --------------UTILS----------------
-    // function getAuction(address _creator) public view returns (Auction memory) {
-    //     return auctions[_creator];
-    // }
-
-    // function getAuctions() public view returns (Auction[] memory) {
-    //     return allAuctions;
-    // }
-
-    // function hasAuction() public view returns (bool) {
-    //     return auctions[msg.sender].auctionId == msg.sender;
-    // }
-
-    // function getMyBids() public view returns (Bid[] memory) {
-    //     return myBids[msg.sender];
-    // }
-
-    // function getBidsForAuction(address _auctionId) public view returns (Bid[] memory) {
-    //     return auctionBids[_auctionId];
-    // }
-
-    // --------------MAJORS------------------
-
-    // One person can create only one auction
 }

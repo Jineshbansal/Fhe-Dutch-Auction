@@ -4,10 +4,8 @@ pragma solidity ^0.8.24;
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract NativeERC20 is ERC20 {
-    uint dec = 10 ** 18;
     constructor() ERC20("BTN", "BidToken") {
-        uint amount = 1000 * dec;
-        _mint(msg.sender, amount);
+        _mint(msg.sender, 100000);
     }
 
     function mint(address recipient) external {

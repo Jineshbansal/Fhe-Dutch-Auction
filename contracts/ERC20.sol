@@ -8,7 +8,7 @@ import { ConfidentialERC20 } from "fhevm-contracts/contracts/token/ERC20/Confide
 
 contract ConfERC20 is SepoliaZamaFHEVMConfig, ConfidentialERC20 {
     constructor() ConfidentialERC20("OZT", "Ozark") {
-        _unsafeMint(msg.sender, 1000000);
+        _unsafeMint(msg.sender, 10000);
         _unsafeMint(address(this), 10000);
     }
 

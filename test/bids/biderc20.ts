@@ -22,6 +22,7 @@ describe("Blind Auction ERC20", function () {
 
     await this.bidToken.mint(this.signers.alice);
     await this.bidToken.mint(this.signers.carol);
+    await this.bidToken.mint(this.signers.bob);
     await this.bidToken.mint(this.signers.dave);
     await this.bidToken.mint(this.signers.eve);
     await this.bidToken.mint(this.signers.fred);
@@ -53,10 +54,10 @@ describe("Blind Auction ERC20", function () {
     this.fhevm = await createInstance();
   });
 
-  async function createAuction(this: Mocha.Context, auctionTitle: string) {
-    await this.auctionToken["approve(address,uint256)"](this.auctionAddress, 1000);
+  async function createAuction(this: Mocha.Context, auctionTitle: string, amount: any) {
+    await this.auctionToken["approve(address,uint256)"](this.auctionAddress, amount);
 
-    await this.auction.createAuction(this.auctionTokenAddress, this.bidTokenAddress, auctionTitle, 1000, 4, 100);
+    await this.auction.createAuction(this.auctionTokenAddress, this.bidTokenAddress, auctionTitle, amount, 4, 100);
   }
 
   async function initiateBid(this: Mocha.Context, bidder: any, auctionId: any, tokenrate: any, tokenAsked: any) {
@@ -86,13 +87,13 @@ describe("Blind Auction ERC20", function () {
   }
 
   it("Create Auction", async function () {
-    await createAuction.call(this, "Willins".toString());
+    await createAuction.call(this, "Willins".toString(), 1000);
 
     expect(await this.auctionToken.balanceOf(this.auctionAddress)).to.equal("1000");
   });
 
   it("Create Bids", async function () {
-    await createAuction.call(this, "Willins".toString());
+    await createAuction.call(this, "Willins".toString(), 1000);
     await initiateBid.call(this, this.signers.bob, 1, 2, 200);
     await initiateBid.call(this, this.signers.carol, 1, 3, 300);
     await initiateBid.call(this, this.signers.dave, 1, 4, 400);
@@ -108,7 +109,7 @@ describe("Blind Auction ERC20", function () {
   });
 
   it("Increse existing bid", async function () {
-    await createAuction.call(this, "Willins".toString());
+    await createAuction.call(this, "Willins".toString(), 1000);
 
     await initiateBid.call(this, this.signers.carol, 1, 2, 200);
 
@@ -143,7 +144,7 @@ describe("Blind Auction ERC20", function () {
   });
 
   it("Decrease existing bid", async function () {
-    await createAuction.call(this, "Willins".toString());
+    await createAuction.call(this, "Willins".toString(), 1000);
 
     await initiateBid.call(this, this.signers.carol, 1, 2, 200);
 
@@ -165,92 +166,167 @@ describe("Blind Auction ERC20", function () {
     expect(await debug.decrypt64(await this.bidToken.balanceOf(this.auctionAddress))).to.equal("100");
   });
 
-  it("reveal Bids", async function () {
-    await createAuction.call(this, "Willins".toString());
+  it("should reveal auction coorectly against 20 bids", async function () {
+    await createAuction.call(this, "Ultra Large Bid".toString(), 1000);
 
     await initiateBid.call(this, this.signers.bob, 1, 2, 200);
-    await initiateBid.call(this, this.signers.carol, 1, 3, 1000);
-    // await initiateBid.call(this, this.signers.dave, 1, 4, 500);
-    // await initiateBid.call(this, this.signers.eve, 1, 5, 500);
-    // await initiateBid.call(this, this.signers.fred, 1, 6, 600);
-    // await initiateBid.call(this, this.signers.greg, 1, 7, 700);
-    // await initiateBid.call(this, this.signers.hugo, 1, 8, 800);
-    // await initiateBid.call(this, this.signers.ian, 1, 9, 900);
-    // await initiateBid.call(this, this.signers.jane, 1, 10, 1000);
-    // await initiateBid.call(this, this.signers.a, 1, 10, 1000);
-    // await initiateBid.call(this, this.signers.b, 1, 10, 1000);
-    // await initiateBid.call(this, this.signers.c, 1, 10, 1000);
-    // await initiateBid.call(this, this.signers.d, 1, 10, 1000);
-    // await initiateBid.call(this, this.signers.e, 1, 10, 1000);
-    // await initiateBid.call(this, this.signers.f, 1, 10, 1000);
-    // await initiateBid.call(this, this.signers.g, 1, 10, 1000);
-    // await initiateBid.call(this, this.signers.h, 1, 10, 1000);
-    // await initiateBid.call(this, this.signers.i, 1, 10, 1000);
-    // await initiateBid.call(this, this.signers.j, 1, 10, 1000);
-    console.log(
-      "bidToken balance of bob before",
-      await debug.decrypt64(await this.bidToken.balanceOf(this.signers.bob.address)),
-    );
-    // console.log(
-    //   "AuctionToken balance of bob before",
-    //   await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.bob.address)),
-    // );
+    await initiateBid.call(this, this.signers.carol, 1, 3, 300);
+    await initiateBid.call(this, this.signers.dave, 1, 4, 100);
+    await initiateBid.call(this, this.signers.eve, 1, 5, 500);
+    await initiateBid.call(this, this.signers.fred, 1, 6, 600);
+    await initiateBid.call(this, this.signers.greg, 1, 7, 700);
+    await initiateBid.call(this, this.signers.hugo, 1, 8, 800);
+    await initiateBid.call(this, this.signers.ian, 1, 9, 900);
+    await initiateBid.call(this, this.signers.jane, 1, 10, 1000);
+    await initiateBid.call(this, this.signers.a, 1, 10, 1000);
+    await initiateBid.call(this, this.signers.b, 1, 10, 1000);
+    await initiateBid.call(this, this.signers.c, 1, 10, 1000);
+    await initiateBid.call(this, this.signers.d, 1, 10, 1000);
+    await initiateBid.call(this, this.signers.e, 1, 10, 1000);
+    await initiateBid.call(this, this.signers.f, 1, 10, 1000);
+    await initiateBid.call(this, this.signers.g, 1, 10, 1000);
+    await initiateBid.call(this, this.signers.h, 1, 10, 1000);
+    await initiateBid.call(this, this.signers.i, 1, 10, 1000);
+    await initiateBid.call(this, this.signers.j, 1, 10, 1000);
 
-    console.log(
-      "bidToken balance of carol before",
-      await debug.decrypt64(await this.bidToken.balanceOf(this.signers.carol.address)),
-    );
-    // console.log(
-    //   "AuctionToken balance of carol before",
-    //   await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.carol.address)),
-    // );
+    await this.auction.decryptAllbids(1);
+    await awaitAllDecryptionResults();
+    await this.auction.connect(this.signers.alice).revealAuction(1);
+  });
 
-    console.log("AuctionToken balance of contract before", await this.auctionToken.balanceOf(this.auctionAddress));
+  it("should reveal auction correctly with 3 bidders", async function () {
+    await createAuction.call(this, "BasicAuction".toString(), 1000);
 
-    // console.log(
-    //   "bidToken balance of contract before",
-    //   await debug.decrypt64(await this.bidToken.balanceOf(this.auctionAddress)),
-    // );
-    // console.log(
-    //   "AuctionToken balance of contract before",
-    //   await debug.decrypt64(await this.auctionToken.balanceOf(this.auctionAddress)),
-    // );
+    await initiateBid.call(this, this.signers.bob, 1, 2, 200);
+    await initiateBid.call(this, this.signers.carol, 1, 3, 300);
+    await initiateBid.call(this, this.signers.dave, 1, 4, 100);
 
-    // console.log(
-    //   "bidToken balanced of alice before",
-    //   await debug.decrypt64(await this.bidToken.balanceOf(this.signers.alice.address)),
-    // );
-    // console.log(
-    //   "AuctionToken balanced of alice before",
-    //   await debug.decrypt64(await this.auctionToken.balanceOf(this.signers.alice.address)),
-    // );
+    // Initial balance of the auciton contract
+    expect(await this.auctionToken.balanceOf(this.auctionAddress)).to.equal("1000");
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.auctionAddress))).to.equal("1700");
+
+    // Bidders of the auction
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.signers.bob))).to.equal("1009600");
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.signers.carol))).to.equal("999100");
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.signers.dave))).to.equal("999600");
 
     await this.auction.decryptAllbids(1);
     await awaitAllDecryptionResults();
     await this.auction.connect(this.signers.alice).revealAuction(1);
 
-    console.log(
-      "bidToken balance of bob after",
-      await debug.decrypt64(await this.bidToken.balanceOf(this.signers.bob.address)),
-    );
+    expect(await this.auctionToken.balanceOf(this.auctionAddress)).to.equal("0");
 
-    console.log("AuctionToken balance of bob after", await this.auctionToken.balanceOf(this.signers.bob.address));
+    // Bidders of the auction
+    expect(await this.auctionToken.balanceOf(this.signers.bob)).to.equal("200");
+    expect(await this.auctionToken.balanceOf(this.signers.carol)).to.equal("300");
+    expect(await this.auctionToken.balanceOf(this.signers.dave)).to.equal("100");
 
-    console.log(
-      "bidToken balance of carol after",
-      await debug.decrypt64(await this.bidToken.balanceOf(this.signers.carol.address)),
-    );
-    console.log("AuctionToken balance of carol after", await this.auctionToken.balanceOf(this.signers.carol.address));
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.signers.bob))).to.equal("1009600");
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.signers.carol))).to.equal("999400");
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.signers.dave))).to.equal("999800");
 
-    console.log(
-      "bidToken balance of contract after",
-      await debug.decrypt64(await this.bidToken.balanceOf(this.auctionAddress)),
-    );
-    console.log("AuctionToken balance of contract after", await this.auctionToken.balanceOf(this.auctionAddress));
+    // owner of the auction
+    expect(await this.auctionToken.balanceOf(this.signers.alice)).to.equal("99400");
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.signers.alice))).to.equal("1001200");
 
-    // console.log(
-    //   "bidToken balanced of alice after",
-    //   await debug.decrypt64(await this.bidToken.balanceOf(this.signers.alice.address)),
-    // );
+    // Final balance of the auction contract
+    expect(await this.auctionToken.balanceOf(this.auctionAddress)).to.equal("0");
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.auctionAddress))).to.equal("0");
+  });
+
+  it("should reveal auction correctly with 9 bidders", async function () {
+    await createAuction.call(this, "LargeAuction".toString(), 10000);
+
+    const bidders = [
+      this.signers.bob,
+      this.signers.carol,
+      this.signers.dave,
+      this.signers.eve,
+      this.signers.fred,
+      this.signers.greg,
+      this.signers.hugo,
+      this.signers.ian,
+      this.signers.jane,
+    ];
+    const bidAmounts = [200, 300, 100, 500, 600, 700, 800, 900, 1000, 1100];
+
+    for (let i = 0; i < bidders.length; i++) {
+      await initiateBid.call(this, bidders[i], 1, i + 1, bidAmounts[i]);
+    }
+
+    // Initial Balance of the contract
+    expect(await this.auctionToken.balanceOf(this.auctionAddress)).to.equal("10000");
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.auctionAddress))).to.equal("32100");
+
+    // Initial balance of the auciton owner
+    expect(await this.auctionToken.balanceOf(this.signers.alice)).to.equal("90000");
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.signers.alice))).to.equal("1000000");
+
+    await this.auction.decryptAllbids(1);
+    await awaitAllDecryptionResults();
+    await this.auction.connect(this.signers.alice).revealAuction(1);
+
+    // Final balance of the auction owner
+    expect(await this.auctionToken.balanceOf(this.signers.alice)).to.equal("94900");
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.signers.alice))).to.equal("1005100");
+
+    // Final balance of the auction contract
+    expect(await this.auctionToken.balanceOf(this.auctionAddress)).to.equal("0");
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.auctionAddress))).to.equal("0");
+  });
+
+  it("should handle auction reveal when no bids are placed", async function () {
+    await createAuction.call(this, "EmptyAuction".toString(), 1000);
+
+    await this.auction.decryptAllbids(1);
+    await awaitAllDecryptionResults();
+
+    await expect(this.auction.connect(this.signers.alice).revealAuction(1)).to.be.revertedWith("No bids to reveal");
+  });
+
+  it("should correctly reveal auction when all bids are identical", async function () {
+    await createAuction.call(this, "IdenticalBidsAuction".toString(), 1000);
+
+    const bidders = [this.signers.bob, this.signers.carol, this.signers.dave];
+    const bidAmount = 500;
+
+    // Initiate bids for all 3 bidders
+    for (const bidder of bidders) {
+      await initiateBid.call(this, bidder, 1, 1, bidAmount);
+    }
+
+    // Initial balance checks
+    expect(await this.auctionToken.balanceOf(this.auctionAddress)).to.equal("1000");
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.auctionAddress))).to.equal("1500");
+
+    // Bidders' initial bidToken balances before auction reveal
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.signers.bob))).to.equal("1009500");
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.signers.carol))).to.equal("999500");
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.signers.dave))).to.equal("999500");
+
+    await this.auction.decryptAllbids(1);
+    await awaitAllDecryptionResults();
+    await this.auction.connect(this.signers.alice).revealAuction(1);
+
+    // Auction contract's auctionToken balance should now be 0
+    expect(await this.auctionToken.balanceOf(this.auctionAddress)).to.equal("0");
+
+    // Bidders' final auctionToken balances after auction reveal
+    expect(await this.auctionToken.balanceOf(this.signers.bob)).to.equal("500");
+    expect(await this.auctionToken.balanceOf(this.signers.carol)).to.equal("500");
+    expect(await this.auctionToken.balanceOf(this.signers.dave)).to.equal("0");
+
+    // Bidders' bidToken balances should be adjusted correctly
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.signers.bob))).to.equal("1009500");
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.signers.carol))).to.equal("999500");
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.signers.dave))).to.equal("1000000");
+
+    // Auction owner's balances
+    expect(await this.auctionToken.balanceOf(this.signers.alice)).to.equal("99000");
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.signers.alice))).to.equal("1001000");
+
+    // Final balance of the auction contract
+    expect(await this.auctionToken.balanceOf(this.auctionAddress)).to.equal("0");
+    expect(await debug.decrypt64(await this.bidToken.balanceOf(this.auctionAddress))).to.equal("0");
   });
 });
