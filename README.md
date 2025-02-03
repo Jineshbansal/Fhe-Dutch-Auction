@@ -5,6 +5,8 @@
 In this contract, we implemented a Single-Price Sealed-Bid Auction using Solidity and FHEVM, ensuring bid confidentiality while settling the auction at a uniform price (the lowest price required to fulfill all token sales).
 
 ## System Design
+<img width="722" alt="Screenshot 2025-02-03 at 6 50 04 PM" src="https://github.com/user-attachments/assets/089d0e98-8c80-4068-af27-3d0d11f18c51" />
+
 
 ## Key Design Decisions in our Auction Contract
 
