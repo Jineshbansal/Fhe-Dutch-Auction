@@ -31,8 +31,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         uint256 auctionId; // Unique identifier for the auction
         address auctionOwner; // Address of the auction creator
         string tokenName; // Name of the token being auctioned
-        uint64 tokenCount; // Total number of tokens available in the auction
-        uint64 minCount; // Minimum number of tokens that can be bid on
+        uint64 tokensPutOnTheAuction; // Total number of tokens available in the auction
         uint256 startTime; // Timestamp when the auction starts
         uint256 endTime; // Timestamp when the auction ends
         bool isActive; // Indicates if the auction is currently active
@@ -85,7 +84,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         address _auctionTokenAddress, // Address of the token being auctioned
         address _bidTokenAddress, // Address of the token used for bidding
         string calldata _auctionTitle, // Title or name of the auction
-        uint64 _tokenCount, // Total number of tokens available in the auction
+        uint64 _tokensPutOnTheAuction, // Total number of tokens available in the auction
         uint256 _startingtime, // Time delay before auction starts (relative to block time)
         uint256 _endTime // Time delay before auction ends (relative to block time)
     ) public {
@@ -103,9 +102,8 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
             auctionOwner: msg.sender, // The auction creator
             auctionId: auctionCount, // Unique auction identifier
             tokenName: "auctionToken", // Default name for auctioned tokens
-            tokenCount: _tokenCount, // Total tokens available in auction
+            tokensPutOnTheAuction: _tokensPutOnTheAuction, // Total tokens available in auction
             startTime: block.timestamp + _startingtime, // Start time of auction
-            minCount: (_tokenCount * 1) / 100, // Minimum bid count (1% of total tokens)
             endTime: block.timestamp + _endTime, // End time of auction
             isActive: true, // Auction is active upon creation
             isDecrypted: false // Auction bid details are initially encrypted
@@ -117,7 +115,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
 
         // Transfer auction tokens from the creator to the contract for holding
         require(
-            IERC20(_auctionTokenAddress).transferFrom(msg.sender, address(this), _tokenCount),
+            IERC20(_auctionTokenAddress).transferFrom(msg.sender, address(this), _tokensPutOnTheAuction),
             "Transfer failed"
         );
 
