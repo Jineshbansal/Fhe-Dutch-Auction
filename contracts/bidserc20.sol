@@ -29,8 +29,8 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         uint256 auctionId; // Unique identifier for the auction
         address auctionOwner; // Address of the auction creator
         string tokenName; // Name of the token being auctioned
-        uint64 tokenCount; // Total number of tokens available in the auction
-        uint64 minCount; // Minimum number of tokens that can be bid on
+        uint64 tokensPutOnTheAuction; // Total number of tokens available in the auction
+        uint64 minCountForBidding; // Minimum number of tokens that can be bid on
         uint256 startingBidTime; // Timestamp when the auction starts
         uint256 endTime; // Timestamp when the auction ends
         bool isActive; // Indicates if the auction is currently active
@@ -53,7 +53,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         bool isClaimed; // Whether the bid has been claimed or settled
     }
 
-    mapping(address => Auction[]) public MyAuctions;
+    mapping(address => Auction[]) public myAuctions;
     // Stores all auctions created by a specific user (auction owner address → array of auctions).
 
     mapping(uint256 => Auction) public auctions;
@@ -104,16 +104,16 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
             auctionOwner: msg.sender, // The auction creator
             auctionId: auctionCount, // Unique auction identifier
             tokenName: "auctionToken", // Default name for auctioned tokens
-            tokenCount: _tokenCount, // Total tokens available in auction
+            tokensPutOnTheAuction: _tokenCount, // Total tokens available in auction
             startingBidTime: block.timestamp + _startingtime, // Start time of auction
-            minCount: (_tokenCount * 1) / 100, // Minimum bid count (1% of total tokens)
+            minCountForBidding: (_tokenCount * 1) / 100, // Minimum bid count (1% of total tokens)
             endTime: block.timestamp + _endTime, // End time of auction
             isActive: true, // Auction is active upon creation
             isDecrypted: false // Auction bid details are initially encrypted
         });
 
         // Store the auction details for the owner and globally
-        MyAuctions[msg.sender].push(newAuction);
+        myAuctions[msg.sender].push(newAuction);
         auctions[auctionCount] = newAuction;
 
         // Transfer auction tokens from the creator to the contract for holding
@@ -204,12 +204,12 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         address bidId, // Address of the bidder
         uint256 auctionId, // ID of the auction
         euint64 perTokenRate, // Encrypted per-token bid rate
-        euint64 tokenCount // Encrypted token count
+        euint64 tokensPutOnTheAuction // Encrypted token count
     ) internal {
         // Create an array to store encrypted values as uint256
         uint256[] memory cts = new uint256[](2);
         cts[0] = Gateway.toUint256(perTokenRate); // Convert encrypted per-token rate to uint256
-        cts[1] = Gateway.toUint256(tokenCount); // Convert encrypted token count to uint256
+        cts[1] = Gateway.toUint256(tokensPutOnTheAuction); // Convert encrypted token count to uint256
 
         // Request decryption through the gateway
         uint256 requestID = Gateway.requestDecryption(
@@ -229,7 +229,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
     function callbackMixed(
         uint256 requestID, // The ID of the decryption request
         uint64 perTokenRate, // Decrypted per-token rate
-        uint64 tokenCount // Decrypted token count
+        uint64 tokensPutOnTheAuction // Decrypted token count
     ) public onlyGateway {
         // Retrieve stored parameters using requestID
         uint256[] memory params = getParamsUint256(requestID);
@@ -240,7 +240,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         uint256 auctionId = params[0];
 
         // Store the decrypted bid information in the plaintext bid mapping
-        auctionPlaintextBids[auctionId].push(BidPlaintext(bidId, auctionId, perTokenRate, tokenCount, false));
+        auctionPlaintextBids[auctionId].push(BidPlaintext(bidId, auctionId, perTokenRate, tokensPutOnTheAuction, false));
     }
 
     // Function to decrypt all bids in an auction
@@ -300,7 +300,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
             }
         }
 
-        uint64 totalTokens = auctions[_auctionId].tokenCount; // Total tokens available for sale
+        uint64 totalTokens = auctions[_auctionId].tokensPutOnTheAuction; // Total tokens available for sale
         uint64 tempTotalTokens = totalTokens; // Track remaining tokens
 
         uint64 finalPrice = 0; // Variable to store the final auction price

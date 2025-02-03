@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { ethers ,network} from "hardhat";
+import { ethers, network } from "hardhat";
 
 import { awaitAllDecryptionResults, initGateway } from "../asyncDecrypt";
 import { createInstance } from "../instance";
@@ -57,7 +57,7 @@ describe("Blind Auction ERC20", function () {
   async function createAuction(this: Mocha.Context, auctionTitle: string, amount: any) {
     await this.auctionToken["approve(address,uint256)"](this.auctionAddress, amount);
 
-    await this.auction.createAuction(this.auctionTokenAddress, this.bidTokenAddress, auctionTitle, amount, 0,100);
+    await this.auction.createAuction(this.auctionTokenAddress, this.bidTokenAddress, auctionTitle, amount, 0, 100);
   }
 
   async function initiateBid(this: Mocha.Context, bidder: any, auctionId: any, tokenrate: any, tokenAsked: any) {
@@ -215,7 +215,7 @@ describe("Blind Auction ERC20", function () {
     // Set the next block's timestamp to a custom value (e.g., 1 day ahead)
     let newTimestamp = currentTimestamp + 60 * 60 * 24; // 1 day ahead
     await network.provider.send("evm_setNextBlockTimestamp", [newTimestamp]);
-    
+
     // Mine the block to set the new timestamp
     await network.provider.send("evm_mine");
 
@@ -247,10 +247,9 @@ describe("Blind Auction ERC20", function () {
     // Set the next block's timestamp to a custom value (e.g., 1 day ahead)
     let newTimestamp = currentTimestamp + 60 * 60 * 24; // 1 day ahead
     await network.provider.send("evm_setNextBlockTimestamp", [newTimestamp]);
-    
+
     // Mine the block to set the new timestamp
     await network.provider.send("evm_mine");
-
 
     // Initial balance of the auciton contract
     expect(await this.auctionToken.balanceOf(this.auctionAddress)).to.equal("1000");
@@ -312,7 +311,7 @@ describe("Blind Auction ERC20", function () {
     // Set the next block's timestamp to a custom value (e.g., 1 day ahead)
     let newTimestamp = currentTimestamp + 60 * 60 * 24; // 1 day ahead
     await network.provider.send("evm_setNextBlockTimestamp", [newTimestamp]);
-    
+
     // Mine the block to set the new timestamp
     await network.provider.send("evm_mine");
 
