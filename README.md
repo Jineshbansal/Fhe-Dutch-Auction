@@ -8,6 +8,7 @@ In this contract, we implemented a Single-Price Sealed-Bid Auction using Solidit
 <img width="722" alt="Screenshot 2025-02-03 at 6 50 04 PM" src="https://github.com/user-attachments/assets/089d0e98-8c80-4068-af27-3d0d11f18c51" />
 
 
+
 ## Key Design Decisions in our Auction Contract
 
 1. **Single Bid Per Address**
@@ -31,7 +32,7 @@ In this contract, we implemented a Single-Price Sealed-Bid Auction using Solidit
     Participants must provide funds upfront when placing a bid. This ensures only serious bidders participate, reducing spam and fraudulent bidding.
 
 ## Functions in blindAuctionERC20.sol
-1. **createAuction**
+1. **initiateAuction**
     - **Purpose**: Allows users to create a new blind auction where participants can place encrypted bids for ERC20 tokens.
     - **Parameters**:
       - `_auctionTokenAddress`: The address of the ERC20 token being auctioned.
@@ -47,7 +48,7 @@ In this contract, we implemented a Single-Price Sealed-Bid Auction using Solidit
       - Transfers auction tokens from the creator to the contract.
       - Marks the auction as active.
 
-2. **initiateBid**
+2. **placeEncryptedBid**
     - **Purpose**: Allows bidders to submit encrypted bids for an auction.
     - **Parameters**:
       - `_auctionId`: The ID of the auction being bid on.
@@ -62,7 +63,7 @@ In this contract, we implemented a Single-Price Sealed-Bid Auction using Solidit
       - Stores the bid securely in encrypted form.
       - Transfers encrypted funds from the bidder to the contract.
 
-3. **decryptAllbids**
+3. **decryptAuctionBids**
     - **Purpose**: Decrypts all bids for an auction after it ends.
     - **Parameters**:
       - `_auctionId`: The ID of the auction.
@@ -72,7 +73,7 @@ In this contract, we implemented a Single-Price Sealed-Bid Auction using Solidit
       - Requests decryption for all bids using the FHE Gateway.
       - Stores the decrypted bids for further processing.
 
-4. **getFinalPrice**
+4. **settleAuctionPayments**
     - **Purpose**: Determines the final clearing price after the auction ends.
     - **Parameters**:
       - `_auctionId`: The ID of the auction.
@@ -84,7 +85,7 @@ In this contract, we implemented a Single-Price Sealed-Bid Auction using Solidit
       - Transfers funds to the auction owner.
       - Returns unsold tokens to the auction owner.
 
-5. **reclaimTokens**
+5. **claimAuctionTokens**
     - **Purpose**: Allows bidders to claim their tokens or refunds after the auction ends.
     - **Parameters**:
       - `_auctionId`: The ID of the auction.
@@ -96,7 +97,7 @@ In this contract, we implemented a Single-Price Sealed-Bid Auction using Solidit
          - If bid < final price → Refund full bid amount.
       - Marks the bid as claimed.
 
-6. **updateBidInc**
+6. **increaseBidAmount**
     - **Purpose**: Allows a bidder to increase their bid in an active auction.
     - **Parameters**:
       - `_auctionId`: ID of the auction.
@@ -109,7 +110,7 @@ In this contract, we implemented a Single-Price Sealed-Bid Auction using Solidit
       - Updates the bid with new encrypted values.
       - Transfers additional bid amount from the bidder to the contract.
 
-7. **updateBidDec**
+7. **decreaseBidAmount**
     - **Purpose**: Allows a bidder to decrease their bid in an active auction.
     - **Parameters**:
       - `_auctionId`: ID of the auction.
