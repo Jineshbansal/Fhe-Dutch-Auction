@@ -2,7 +2,8 @@
 
 
 ## Overview
-In this contract, we implemented a Single-Price Sealed-Bid Auction using Solidity and FHEVM, ensuring bid confidentiality while settling the auction at a uniform price (the lowest price required to fulfill all token sales).
+We implemented a **Single-Price Sealed-Bid Auction** using **Solidity** and **FHEVM**, ensuring **bid confidentiality** while determining a **uniform clearing price**—the lowest bid price required to fulfill all token sales. The auctioned tokens are **ERC20 tokens**, whereas the bidding tokens are **ConfidentialERC20**, preserving **bidder privacy** throughout the process.
+
 
 ## System Design
 <img width="722" alt="Screenshot 2025-02-03 at 6 50 04 PM" src="https://github.com/user-attachments/assets/089d0e98-8c80-4068-af27-3d0d11f18c51" />
@@ -34,6 +35,11 @@ In this contract, we implemented a Single-Price Sealed-Bid Auction using Solidit
 6. **Funds Requirement at Bidding Time**
 
     Participants must provide funds upfront when placing a bid. This ensures only serious bidders participate, reducing spam and fraudulent bidding.
+
+7. **Handling Insufficient Participation**
+
+    If the auction does not receive any bids or has too few participants, it is considered not fully sold. In such cases, the auction execution will occur at the lowest set price, and any unsold tokens will be returned to the auction owner.
+
 
 ## Functions in blindAuctionERC20.sol
 1. **initiateAuction**
