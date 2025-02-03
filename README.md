@@ -2,35 +2,127 @@
 
 
 ## Overview
-In this contract we implemented a Single-Price Sealed-Bid Auction using Solidity and FHEVM, ensuring bid confidentiality while settling the auction at a uniform price (the lowest price required to fulfill all token sales). 
+In this contract, we implemented a Single-Price Sealed-Bid Auction using Solidity and FHEVM, ensuring bid confidentiality while settling the auction at a uniform price (the lowest price required to fulfill all token sales).
 
-## System design
+## System Design
 
-## Key Design Decisions in our Auction Contract 
+## Key Design Decisions in our Auction Contract
 
-1. Single Bid Per Address
+1. **Single Bid Per Address**
 
-Each participant can submit only one bid. If they wish to change it, they must modify their existing bid.
+    Each participant can submit only one bid. If they wish to change it, they must modify their existing bid.
 
-2. Bid Modification Allowed
+2. **Bid Modification Allowed**
 
-Users can update their bid before the auction ends, ensuring they can adjust based on market conditions.
+    Users can update their bid before the auction ends, ensuring they can adjust based on market conditions.
 
-3. Auction Duration Control
+3. **Auction Duration Control**
 
-The auction creator decides the duration, offering flexibility in setting the bidding window.
+    The auction creator decides the duration, offering flexibility in setting the bidding window.
 
-4. Handling Equal Lowest Bids
+4. **Handling Equal Lowest Bids**
 
-If multiple bidders have the same lowest price at the cut-off, tokens are distributed proportionally based on the quantity they bid for.
+    If multiple bidders have the same lowest price at the cut-off, tokens are distributed proportionally based on the quantity they bid for.
 
-5. Funds Requirement at Bidding Time
+5. **Funds Requirement at Bidding Time**
 
-Participants must provide funds upfront when placing a bid. This ensures only serious bidders participate, reducing spam and fraudulent bidding
+    Participants must provide funds upfront when placing a bid. This ensures only serious bidders participate, reducing spam and fraudulent bidding.
+
+## Functions in blindAuctionERC20.sol
+1. **createAuction**
+    - **Purpose**: Allows users to create a new blind auction where participants can place encrypted bids for ERC20 tokens.
+    - **Parameters**:
+      - `_auctionTokenAddress`: The address of the ERC20 token being auctioned.
+      - `_bidTokenAddress`: The address of the ERC20 token used for bidding.
+      - `_auctionTitle`: Name or description of the auction.
+      - `_tokensPutOnTheAuction`: Number of tokens available for sale.
+      - `_startingtime`: Delay (in seconds) before the auction starts.
+      - `_endTime`: Delay (in seconds) before the auction ends.
+    - **Key Actions**:
+      - Verifies that the auction end time is valid.
+      - Ensures the bid token address is legitimate.
+      - Creates and stores an auction with unique auctionId.
+      - Transfers auction tokens from the creator to the contract.
+      - Marks the auction as active.
+
+2. **initiateBid**
+    - **Purpose**: Allows bidders to submit encrypted bids for an auction.
+    - **Parameters**:
+      - `_auctionId`: The ID of the auction being bid on.
+      - `_tokenRate`: Encrypted bid rate per token.
+      - `_tokenRateproof`: Proof of the bid rate encryption.
+      - `_tokenCount`: Encrypted number of tokens the bidder wants.
+      - `_tokenCountproof`: Proof of token count encryption.
+    - **Key Actions**:
+      - Ensures bidding is allowed during the auction timeframe.
+      - Converts encrypted bid values into euint64 format.
+      - Verifies that the bidder has not already placed a bid.
+      - Stores the bid securely in encrypted form.
+      - Transfers encrypted funds from the bidder to the contract.
+
+3. **decryptAllbids**
+    - **Purpose**: Decrypts all bids for an auction after it ends.
+    - **Parameters**:
+      - `_auctionId`: The ID of the auction.
+    - **Key Actions**:
+      - Ensures that only the auction owner can decrypt bids.
+      - Verifies the auction has not already been decrypted.
+      - Requests decryption for all bids using the FHE Gateway.
+      - Stores the decrypted bids for further processing.
+
+4. **getFinalPrice**
+    - **Purpose**: Determines the final clearing price after the auction ends.
+    - **Parameters**:
+      - `_auctionId`: The ID of the auction.
+    - **Key Actions**:
+      - Verifies that the auction has ended.
+      - Ensures that all bids have been decrypted.
+      - Sorts bids in descending order based on bid price.
+      - Finds the price at which all available tokens are allocated.
+      - Transfers funds to the auction owner.
+      - Returns unsold tokens to the auction owner.
+
+5. **reclaimTokens**
+    - **Purpose**: Allows bidders to claim their tokens or refunds after the auction ends.
+    - **Parameters**:
+      - `_auctionId`: The ID of the auction.
+    - **Key Actions**:
+      - Ensures that the auction has ended.
+      - Checks each bid and processes refunds based on final price:
+         - If bid > final price → Refund excess amount & transfer tokens.
+         - If bid == final price → Allocate tokens proportionally.
+         - If bid < final price → Refund full bid amount.
+      - Marks the bid as claimed.
+
+6. **updateBidInc**
+    - **Purpose**: Allows a bidder to increase their bid in an active auction.
+    - **Parameters**:
+      - `_auctionId`: ID of the auction.
+      - `_tokenRate`: New encrypted bid rate per token.
+      - `_tokenRateproof`: Proof of new bid rate encryption.
+      - `_tokenCount`: New encrypted token quantity.
+      - `_tokenCountproof`: Proof of new token count encryption.
+    - **Key Actions**:
+      - Ensures the auction is still active.
+      - Updates the bid with new encrypted values.
+      - Transfers additional bid amount from the bidder to the contract.
+
+7. **updateBidDec**
+    - **Purpose**: Allows a bidder to decrease their bid in an active auction.
+    - **Parameters**:
+      - `_auctionId`: ID of the auction.
+      - `_tokenRate`: New encrypted bid rate per token.
+      - `_tokenRateproof`: Proof of new bid rate encryption.
+      - `_tokenCount`: New encrypted token quantity.
+      - `_tokenCountproof`: Proof of new token count encryption.
+    - **Key Actions**:
+      - Ensures the auction is still active.
+      - Updates the bid with new encrypted values.
+      - Refunds excess bid amount to the bidder.
 
 
 
-## Usage
+## Getting Started
 
 ### Pre Requisites
 
