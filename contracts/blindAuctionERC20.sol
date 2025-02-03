@@ -80,7 +80,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
     // Stores all bids placed by a specific user (bidder address → array of their bids).
 
     // Create a new Auction
-    function createAuction(
+    function initiateAuction(
         address _auctionTokenAddress, // Address of the token being auctioned
         address _bidTokenAddress, // Address of the token used for bidding
         string calldata _auctionTitle, // Title or name of the auction
@@ -124,7 +124,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
     }
 
     // Create an encrypted bid
-    function initiateBid(
+    function placeEncryptedBid(
         uint256 _auctionId, // ID of the auction being bid on
         einput _tokenRate, // Encrypted rate per token
         bytes calldata _tokenRateproof, // Proof for token rate
@@ -194,7 +194,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         );
     }
     // Requests decryption for a bid's per-token rate and token count
-    function requestMixed(
+    function requestBidDecryption(
         address bidId, // Address of the bidder
         uint256 auctionId, // ID of the auction
         euint64 perTokenRate, // Encrypted per-token bid rate
@@ -208,7 +208,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         // Request decryption through the gateway
         uint256 requestID = Gateway.requestDecryption(
             cts,
-            this.callbackMixed.selector, // Callback function to handle the decrypted data
+            this.handleDecryptionCallback.selector, // Callback function to handle the decrypted data
             0, // No additional fee
             block.timestamp + 100, // Decryption deadline
             false // Not an urgent request
@@ -220,7 +220,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
     }
 
     // Callback function to receive decrypted bid data
-    function callbackMixed(
+    function handleDecryptionCallback(
         uint256 requestID, // The ID of the decryption request
         uint64 perTokenRate, // Decrypted per-token rate
         uint64 tokensPutOnTheAuction // Decrypted token count
@@ -238,7 +238,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
     }
 
     // Function to decrypt all bids in an auction
-    function decryptAllbids(uint256 _auctionId) public {
+    function decryptAuctionBids(uint256 _auctionId) public {
         // Ensure that only the auction owner can decrypt bids
         require(msg.sender == auctions[_auctionId].auctionOwner, "Not Owner");
 
@@ -253,7 +253,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
 
         // Iterate through each bid and request decryption
         for (uint64 i = 0; i < totalBids.length; i++) {
-            requestMixed(
+            requestBidDecryption(
                 totalBids[i].bidId,
                 totalBids[i].auctionId,
                 totalBids[i].perTokenRate,
@@ -263,7 +263,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
     }
 
     // Function to calculate the final clearing price of an auction
-    function getFinalPrice(uint256 _auctionId) public {
+    function settleAuctionPayments(uint256 _auctionId) public {
         uint256 auctionId = _auctionId;
 
         // Ensure the auction is active and has ended
@@ -360,7 +360,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         );
     }
     // Function for bidders to reclaim their tokens or refunds after an auction ends
-    function reclaimTokens(uint256 _auctionId) public {
+    function claimAuctionTokens(uint256 _auctionId) public {
         require(auctions[_auctionId].isActive == false, "Still active"); // Ensure auction is finished
 
         uint256 auctionId = _auctionId;
@@ -437,7 +437,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         }
     }
     // Function to allow a bidder to update their bid in an active auction
-    function updateBidInc(
+    function increaseBidAmount(
         uint256 _auctionId,
         einput _tokenRate,
         bytes calldata _tokenRateproof,
@@ -512,7 +512,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         }
     }
     // Function to allow a bidder to decrease their bid in an active auction
-    function updateBidDec(
+    function decreaseBidAmount(
         uint256 _auctionId,
         einput _tokenRate,
         bytes calldata _tokenRateproof,
