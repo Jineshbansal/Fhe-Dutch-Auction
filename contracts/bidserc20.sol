@@ -71,7 +71,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         uint256 _startingtime, 
         uint256 _endTime
     ) public {
-        require(_endTime >= _startingtime, "End time should be greater than start time");
+        require(_endTime > _startingtime, "End time should be greater than start time");
         require(_tokenCount > 0, "Token count should be greater than 0");
         require(ConfidentialERC20(_bidTokenAddress).totalSupply() >= 0, "Insufficient balance");
         Auction memory newAuction = Auction({

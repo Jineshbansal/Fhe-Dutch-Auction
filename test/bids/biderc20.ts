@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers ,network} from "hardhat";
 
 import { awaitAllDecryptionResults, initGateway } from "../asyncDecrypt";
 import { createInstance } from "../instance";
@@ -57,7 +57,7 @@ describe("Blind Auction ERC20", function () {
   async function createAuction(this: Mocha.Context, auctionTitle: string, amount: any) {
     await this.auctionToken["approve(address,uint256)"](this.auctionAddress, amount);
 
-    await this.auction.createAuction(this.auctionTokenAddress, this.bidTokenAddress, auctionTitle, amount, 0, 0);
+    await this.auction.createAuction(this.auctionTokenAddress, this.bidTokenAddress, auctionTitle, amount, 0,100);
   }
 
   async function initiateBid(this: Mocha.Context, bidder: any, auctionId: any, tokenrate: any, tokenAsked: any) {
@@ -210,6 +210,14 @@ describe("Blind Auction ERC20", function () {
 
     expect(await debug.decrypt64(await this.bidToken.balanceOf(this.auctionAddress))).to.equal(totalBidTokens);
     expect(await this.auctionToken.balanceOf(this.auctionAddress)).to.equal("1000");
+    let currentTimestamp = (await ethers.provider.getBlock("latest")).timestamp;
+
+    // Set the next block's timestamp to a custom value (e.g., 1 day ahead)
+    let newTimestamp = currentTimestamp + 60 * 60 * 24; // 1 day ahead
+    await network.provider.send("evm_setNextBlockTimestamp", [newTimestamp]);
+    
+    // Mine the block to set the new timestamp
+    await network.provider.send("evm_mine");
 
     await this.auction.decryptAllbids(1);
     await awaitAllDecryptionResults();
@@ -234,6 +242,15 @@ describe("Blind Auction ERC20", function () {
     await initiateBid.call(this, this.signers.bob, 1, 2, 200);
     await initiateBid.call(this, this.signers.carol, 1, 3, 300);
     await initiateBid.call(this, this.signers.dave, 1, 4, 100);
+    let currentTimestamp = (await ethers.provider.getBlock("latest")).timestamp;
+
+    // Set the next block's timestamp to a custom value (e.g., 1 day ahead)
+    let newTimestamp = currentTimestamp + 60 * 60 * 24; // 1 day ahead
+    await network.provider.send("evm_setNextBlockTimestamp", [newTimestamp]);
+    
+    // Mine the block to set the new timestamp
+    await network.provider.send("evm_mine");
+
 
     // Initial balance of the auciton contract
     expect(await this.auctionToken.balanceOf(this.auctionAddress)).to.equal("1000");
@@ -290,6 +307,14 @@ describe("Blind Auction ERC20", function () {
     for (const bidder of bidders) {
       await initiateBid.call(this, bidder, 1, 1, bidAmount);
     }
+    let currentTimestamp = (await ethers.provider.getBlock("latest")).timestamp;
+
+    // Set the next block's timestamp to a custom value (e.g., 1 day ahead)
+    let newTimestamp = currentTimestamp + 60 * 60 * 24; // 1 day ahead
+    await network.provider.send("evm_setNextBlockTimestamp", [newTimestamp]);
+    
+    // Mine the block to set the new timestamp
+    await network.provider.send("evm_mine");
 
     // Initial balance checks
     expect(await this.auctionToken.balanceOf(this.auctionAddress)).to.equal("999");
