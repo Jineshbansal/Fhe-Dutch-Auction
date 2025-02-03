@@ -77,15 +77,6 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
     mapping(address => Bid[]) private myBids;
     // Stores all bids placed by a specific user (bidder address → array of their bids).
 
-    // Get the bids created by a sender's address
-    function getMyBids() public view returns (Bid[] memory) {
-        return myBids[msg.sender];
-    }
-
-    // Get the auctions created by a sender's address
-    function getMyAuctions() public view returns (Auction[] memory) {
-        return myAuctions[msg.sender];
-    }
 
     // Create a new Auction
     function initiateAuction(
