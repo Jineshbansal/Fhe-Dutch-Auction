@@ -11,23 +11,27 @@ In this contract, we implemented a Single-Price Sealed-Bid Auction using Solidit
 
 ## Key Design Decisions in our Auction Contract
 
-1. **Single Bid Per Address**
+1. **Claim-Based Token Distribution**
+
+    Initially, we considered distributing the auction proceeds to bidders within the function `settleAuctionPayments`. However, due to the limit on the number of operations in `Fully Homomorphic Encryption (FHE)`, we shifted to a claim-based system where users must actively call a function to claim their auction tokens. This approach ensures efficiency while maintaining security and fairness in the distribution process.
+
+2. **Single Bid Per Address**
 
     Each participant can submit only one bid. If they wish to change it, they must modify their existing bid.
 
-2. **Bid Modification Allowed**
+3. **Bid Modification Allowed**
 
     Users can update their bid before the auction ends, ensuring they can adjust based on market conditions.
 
-3. **Auction Duration Control**
+4. **Auction Duration Control**
 
     The auction creator decides the duration, offering flexibility in setting the bidding window.
 
-4. **Handling Equal Lowest Bids**
+5. **Handling Equal Lowest Bids**
 
     If multiple bidders have the same lowest price at the cut-off, tokens are distributed proportionally based on the quantity they bid for.
 
-5. **Funds Requirement at Bidding Time**
+6. **Funds Requirement at Bidding Time**
 
     Participants must provide funds upfront when placing a bid. This ensures only serious bidders participate, reducing spam and fraudulent bidding.
 
