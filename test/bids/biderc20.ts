@@ -57,7 +57,7 @@ describe("Blind Auction ERC20", function () {
   async function createAuction(this: Mocha.Context, auctionTitle: string, amount: any) {
     await this.auctionToken["approve(address,uint256)"](this.auctionAddress, amount);
 
-    await this.auction.createAuction(this.auctionTokenAddress, this.bidTokenAddress, auctionTitle, amount, 0, 100);
+    await this.auction.initiateAuction(this.auctionTokenAddress, this.bidTokenAddress, auctionTitle, amount, 0, 100);
   }
 
   async function initiateBid(this: Mocha.Context, bidder: any, auctionId: any, tokenrate: any, tokenAsked: any) {
@@ -83,7 +83,13 @@ describe("Blind Auction ERC20", function () {
       );
     await this.auction
       .connect(bidder)
-      .initiateBid(auctionId, tokenRate.handles[0], tokenRate.inputProof, tokenCount.handles[0], tokenCount.inputProof);
+      .placeEncryptedBid(
+        auctionId,
+        tokenRate.handles[0],
+        tokenRate.inputProof,
+        tokenCount.handles[0],
+        tokenCount.inputProof,
+      );
   }
 
   it("Create Auction", async function () {
@@ -138,7 +144,7 @@ describe("Blind Auction ERC20", function () {
 
     await this.auction
       .connect(this.signers.carol)
-      .updateBidInc(1, tokenRate.handles[0], tokenRate.inputProof, tokenCount.handles[0], tokenCount.inputProof);
+      .increaseBidAmount(1, tokenRate.handles[0], tokenRate.inputProof, tokenCount.handles[0], tokenCount.inputProof);
 
     expect(await debug.decrypt64(await this.bidToken.balanceOf(this.auctionAddress))).to.equal("900");
   });
@@ -161,7 +167,7 @@ describe("Blind Auction ERC20", function () {
 
     await this.auction
       .connect(this.signers.carol)
-      .updateBidDec(1, tokenRate.handles[0], tokenRate.inputProof, tokenCount.handles[0], tokenCount.inputProof);
+      .decreaseBidAmount(1, tokenRate.handles[0], tokenRate.inputProof, tokenCount.handles[0], tokenCount.inputProof);
 
     expect(await debug.decrypt64(await this.bidToken.balanceOf(this.auctionAddress))).to.equal("100");
   });
@@ -219,13 +225,13 @@ describe("Blind Auction ERC20", function () {
     // Mine the block to set the new timestamp
     await network.provider.send("evm_mine");
 
-    await this.auction.decryptAllbids(1);
+    await this.auction.decryptAuctionBids(1);
     await awaitAllDecryptionResults();
-    await this.auction.getFinalPrice(1);
+    await this.auction.settleAuctionPayments(1);
 
-    await this.auction.connect(this.signers.a).reclaimTokens(1);
-    await this.auction.connect(this.signers.b).reclaimTokens(1);
-    await this.auction.connect(this.signers.c).reclaimTokens(1);
+    await this.auction.connect(this.signers.a).claimAuctionTokens(1);
+    await this.auction.connect(this.signers.b).claimAuctionTokens(1);
+    await this.auction.connect(this.signers.c).claimAuctionTokens(1);
 
     // These winners reclaimed their won auction token quota
     expect(await this.auctionToken.balanceOf(this.signers.a)).to.equal("100");
@@ -260,9 +266,9 @@ describe("Blind Auction ERC20", function () {
     expect(await debug.decrypt64(await this.bidToken.balanceOf(this.signers.carol))).to.equal("999100");
     expect(await debug.decrypt64(await this.bidToken.balanceOf(this.signers.dave))).to.equal("999600");
 
-    await this.auction.decryptAllbids(1);
+    await this.auction.decryptAuctionBids(1);
     await awaitAllDecryptionResults();
-    await this.auction.getFinalPrice(1);
+    await this.auction.settleAuctionPayments(1);
 
     // Bidders of the auction have not reclaimed their winnings and extra stake
     expect(await this.auctionToken.balanceOf(this.auctionAddress)).to.equal("600");
@@ -276,9 +282,9 @@ describe("Blind Auction ERC20", function () {
     expect(await debug.decrypt64(await this.bidToken.balanceOf(this.signers.dave))).to.equal("999600");
 
     // Bidders reclaim their stake
-    await this.auction.connect(this.signers.bob).reclaimTokens(1);
-    await this.auction.connect(this.signers.carol).reclaimTokens(1);
-    await this.auction.connect(this.signers.dave).reclaimTokens(1);
+    await this.auction.connect(this.signers.bob).claimAuctionTokens(1);
+    await this.auction.connect(this.signers.carol).claimAuctionTokens(1);
+    await this.auction.connect(this.signers.dave).claimAuctionTokens(1);
 
     // Winnings and extra stakes are returned to the bidders
     expect(await this.auctionToken.balanceOf(this.auctionAddress)).to.equal("0");
@@ -324,9 +330,9 @@ describe("Blind Auction ERC20", function () {
     expect(await debug.decrypt64(await this.bidToken.balanceOf(this.signers.carol))).to.equal("999000");
     expect(await debug.decrypt64(await this.bidToken.balanceOf(this.signers.dave))).to.equal("999000");
 
-    await this.auction.decryptAllbids(1);
+    await this.auction.decryptAuctionBids(1);
     await awaitAllDecryptionResults();
-    await this.auction.getFinalPrice(1);
+    await this.auction.settleAuctionPayments(1);
 
     // Bidders of the auction have not reclaimed their winnings and extra stake
     expect(await this.auctionToken.balanceOf(this.auctionAddress)).to.equal("999");
@@ -340,9 +346,9 @@ describe("Blind Auction ERC20", function () {
     expect(await debug.decrypt64(await this.bidToken.balanceOf(this.signers.dave))).to.equal("999000");
 
     // Bidders reclaim their stake
-    await this.auction.connect(this.signers.bob).reclaimTokens(1);
-    await this.auction.connect(this.signers.carol).reclaimTokens(1);
-    await this.auction.connect(this.signers.dave).reclaimTokens(1);
+    await this.auction.connect(this.signers.bob).claimAuctionTokens(1);
+    await this.auction.connect(this.signers.carol).claimAuctionTokens(1);
+    await this.auction.connect(this.signers.dave).claimAuctionTokens(1);
 
     // Bidders' bidToken balances should be adjusted correctly
     expect(await this.auctionToken.balanceOf(this.auctionAddress)).to.equal("0");
