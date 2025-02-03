@@ -57,7 +57,7 @@ describe("Blind Auction ERC20", function () {
   async function createAuction(this: Mocha.Context, auctionTitle: string, amount: any) {
     await this.auctionToken["approve(address,uint256)"](this.auctionAddress, amount);
 
-    await this.auction.createAuction(this.auctionTokenAddress, this.bidTokenAddress, auctionTitle, amount, 4, 100);
+    await this.auction.createAuction(this.auctionTokenAddress, this.bidTokenAddress, auctionTitle, amount, 0, 0);
   }
 
   async function initiateBid(this: Mocha.Context, bidder: any, auctionId: any, tokenrate: any, tokenAsked: any) {
