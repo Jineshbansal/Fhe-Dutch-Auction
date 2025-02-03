@@ -74,7 +74,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
     mapping(uint256 => BidPlaintext[]) public auctionPlaintextBids;
     // Stores decrypted bid details after auction ends (auction ID → array of plaintext bids).
 
-    mapping(address => Bid[]) myBids;
+    mapping(address => Bid[]) private myBids;
     // Stores all bids placed by a specific user (bidder address → array of their bids).
 
     // Get the bids created by a sender's address
