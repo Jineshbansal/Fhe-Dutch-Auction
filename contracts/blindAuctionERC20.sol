@@ -8,14 +8,12 @@
 // Developed for use on Sepolia testnet with FHE-enabled ERC20 tokens.
 pragma solidity ^0.8.24;
 
-
 import "fhevm/lib/TFHE.sol";
 import { SepoliaZamaFHEVMConfig } from "fhevm/config/ZamaFHEVMConfig.sol";
 import { SepoliaZamaGatewayConfig } from "fhevm/config/ZamaGatewayConfig.sol";
 import "fhevm/gateway/GatewayCaller.sol";
 import { ConfidentialERC20 } from "fhevm-contracts/contracts/token/ERC20/ConfidentialERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 
 contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, GatewayCaller {
     address public owner;
@@ -79,6 +77,16 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
     mapping(address => Bid[]) myBids;
     // Stores all bids placed by a specific user (bidder address → array of their bids).
 
+    // Get the bids created by a sender's address
+    function getMyBids() public view returns (Bid[] memory) {
+        return myBids[msg.sender];
+    }
+
+    // Get the auctions created by a sender's address
+    function getMyAuctions() public view returns (Auction[] memory) {
+        return myAuctions[msg.sender];
+    }
+
     // Create a new Auction
     function initiateAuction(
         address _auctionTokenAddress, // Address of the token being auctioned
@@ -89,7 +97,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         uint256 _endTime // Time delay before auction ends (relative to block time)
     ) public {
         // Ensure the auction end time is after the start time
-        require(_endTime >= _startingtime,"Invalid time");
+        require(_endTime >= _startingtime, "Invalid time");
 
         // Verify the bid token has a valid supply (though checking >= 0 is unnecessary)
         require(ConfidentialERC20(_bidTokenAddress).totalSupply() >= 0, "Invalid BidToken address");
@@ -131,9 +139,11 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         einput _tokenCount, // Encrypted count of tokens being bid on
         bytes calldata _tokenCountproof // Proof for token count
     ) public {
-
         // Ensure bidding is within the allowed timeframe
-        require(block.timestamp >= auctions[_auctionId].startTime && block.timestamp <= auctions[_auctionId].endTime, "Auction time error");
+        require(
+            block.timestamp >= auctions[_auctionId].startTime && block.timestamp <= auctions[_auctionId].endTime,
+            "Auction time error"
+        );
 
         uint256 auctionId = _auctionId; // Store auction ID locally
         address bidderId = msg.sender; // Store bidder's address
@@ -234,7 +244,9 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         uint256 auctionId = params[0];
 
         // Store the decrypted bid information in the plaintext bid mapping
-        auctionPlaintextBids[auctionId].push(BidPlaintext(bidId, auctionId, perTokenRate, tokensPutOnTheAuction, false));
+        auctionPlaintextBids[auctionId].push(
+            BidPlaintext(bidId, auctionId, perTokenRate, tokensPutOnTheAuction, false)
+        );
     }
 
     // Function to decrypt all bids in an auction
@@ -271,10 +283,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         require(block.timestamp > auctions[auctionId].endTime, "Not ended");
 
         // Ensure all bids have been decrypted before proceeding
-        require(
-            auctionPlaintextBids[_auctionId].length == auctionBids[_auctionId].length,
-            "Bids not revealed"
-        );
+        require(auctionPlaintextBids[_auctionId].length == auctionBids[_auctionId].length, "Bids not revealed");
 
         // Retrieve all decrypted bids
         BidPlaintext[] memory totalBids = auctionPlaintextBids[_auctionId];
