@@ -28,7 +28,6 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         string auctionTitle; // Title or description of the auction
         uint256 auctionId; // Unique identifier for the auction
         address auctionOwner; // Address of the auction creator
-        string tokenName; // Name of the token being auctioned
         uint64 tokensPutOnTheAuction; // Total number of tokens available in the auction
         uint256 startTime; // Timestamp when the auction starts
         uint256 endTime; // Timestamp when the auction ends
@@ -100,7 +99,6 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
             auctionTitle: _auctionTitle,
             auctionOwner: msg.sender, // The auction creator
             auctionId: auctionCount, // Unique auction identifier
-            tokenName: "auctionToken", // Default name for auctioned tokens
             tokensPutOnTheAuction: _tokensPutOnTheAuction, // Total tokens available in auction
             startTime: block.timestamp + _startingtime, // Start time of auction
             endTime: block.timestamp + _endTime, // End time of auction
