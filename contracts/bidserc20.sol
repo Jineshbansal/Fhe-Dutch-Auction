@@ -8,13 +8,15 @@
 // Developed for use on Sepolia testnet with FHE-enabled ERC20 tokens.
 pragma solidity ^0.8.24;
 
-import "./ERC20.sol";
+
 import "fhevm/lib/TFHE.sol";
 import { SepoliaZamaFHEVMConfig } from "fhevm/config/ZamaFHEVMConfig.sol";
 import { SepoliaZamaGatewayConfig } from "fhevm/config/ZamaGatewayConfig.sol";
 import "fhevm/gateway/GatewayCaller.sol";
 import { ConfidentialERC20 } from "fhevm-contracts/contracts/token/ERC20/ConfidentialERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+
 contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, GatewayCaller {
     address public owner;
     uint256 public auctionCount = 1;
@@ -29,9 +31,9 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         uint256 auctionId; // Unique identifier for the auction
         address auctionOwner; // Address of the auction creator
         string tokenName; // Name of the token being auctioned
-        uint64 tokensPutOnTheAuction; // Total number of tokens available in the auction
-        uint64 minCountForBidding; // Minimum number of tokens that can be bid on
-        uint256 startingBidTime; // Timestamp when the auction starts
+        uint64 tokenCount; // Total number of tokens available in the auction
+        uint64 minCount; // Minimum number of tokens that can be bid on
+        uint256 startTime; // Timestamp when the auction starts
         uint256 endTime; // Timestamp when the auction ends
         bool isActive; // Indicates if the auction is currently active
         bool isDecrypted; // Indicates if auction details are decrypted
@@ -88,13 +90,10 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         uint256 _endTime // Time delay before auction ends (relative to block time)
     ) public {
         // Ensure the auction end time is after the start time
-        require(_endTime >= _startingtime, "End time should be greater than start time");
-
-        // Ensure at least one token is being auctioned
-        require(_tokenCount > 0, "Token count should be greater than 0");
+        require(_endTime >= _startingtime,"Invalid time");
 
         // Verify the bid token has a valid supply (though checking >= 0 is unnecessary)
-        require(ConfidentialERC20(_bidTokenAddress).totalSupply() >= 0, "Insufficient balance");
+        require(ConfidentialERC20(_bidTokenAddress).totalSupply() >= 0, "Invalid BidToken address");
 
         // Create a new auction with the provided details
         Auction memory newAuction = Auction({
@@ -104,9 +103,9 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
             auctionOwner: msg.sender, // The auction creator
             auctionId: auctionCount, // Unique auction identifier
             tokenName: "auctionToken", // Default name for auctioned tokens
-            tokensPutOnTheAuction: _tokenCount, // Total tokens available in auction
-            startingBidTime: block.timestamp + _startingtime, // Start time of auction
-            minCountForBidding: (_tokenCount * 1) / 100, // Minimum bid count (1% of total tokens)
+            tokenCount: _tokenCount, // Total tokens available in auction
+            startTime: block.timestamp + _startingtime, // Start time of auction
+            minCount: (_tokenCount * 1) / 100, // Minimum bid count (1% of total tokens)
             endTime: block.timestamp + _endTime, // End time of auction
             isActive: true, // Auction is active upon creation
             isDecrypted: false // Auction bid details are initially encrypted
@@ -119,7 +118,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         // Transfer auction tokens from the creator to the contract for holding
         require(
             IERC20(_auctionTokenAddress).transferFrom(msg.sender, address(this), _tokenCount),
-            "Transfer failed, maybe you forgot to approve the token"
+            "Transfer failed"
         );
 
         // Increment auction count to ensure unique auction IDs
@@ -134,12 +133,9 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         einput _tokenCount, // Encrypted count of tokens being bid on
         bytes calldata _tokenCountproof // Proof for token count
     ) public {
-        // Ensure the auction is active
-        require(auctions[_auctionId].isActive == true, "Auction is not active");
 
         // Ensure bidding is within the allowed timeframe
-        require(block.timestamp <= auctions[_auctionId].endTime, "Auction time is over");
-        require(block.timestamp >= auctions[_auctionId].startingBidTime, "Auction time is not started");
+        require(block.timestamp >= auctions[_auctionId].startTime && block.timestamp <= auctions[_auctionId].endTime, "Auction time error");
 
         uint256 auctionId = _auctionId; // Store auction ID locally
         address bidderId = msg.sender; // Store bidder's address
@@ -168,7 +164,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         // Ensure the bidder has not already placed a bid for this auction
         for (uint i = 0; i < myBids[bidderId].length; i++) {
             if (myBids[bidderId][i].auctionId == auctionId) {
-                revert("Bid already exists for this auction");
+                revert("Bid Exists");
             }
         }
 
@@ -196,7 +192,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         // Transfer the calculated bid amount from the bidder to the contract
         require(
             ConfidentialERC20(auctions[auctionId].bidtokenAddress).transferFrom(msg.sender, address(this), tokenSubmit),
-            "Transfer failed, maybe you forgot to approve tokens"
+            "Transfer failed"
         );
     }
     // Requests decryption for a bid's per-token rate and token count
@@ -246,10 +242,10 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
     // Function to decrypt all bids in an auction
     function decryptAllbids(uint256 _auctionId) public {
         // Ensure that only the auction owner can decrypt bids
-        require(msg.sender == auctions[_auctionId].auctionOwner, "Only auction owner can decrypt bids");
+        require(msg.sender == auctions[_auctionId].auctionOwner, "Not Owner");
 
         // Ensure the auction has not already been decrypted
-        require(auctions[_auctionId].isDecrypted == false, "Auction is already decrypted");
+        require(auctions[_auctionId].isDecrypted == false, "Decrypted");
 
         // Mark the auction as decrypted
         auctions[_auctionId].isDecrypted = true;
@@ -267,23 +263,19 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
             );
         }
     }
-    // Function to get the number of plaintext bids for a given auction
-    function getbidslength(uint256 _auctionId) public view returns (uint256) {
-        return auctionPlaintextBids[_auctionId].length;
-    }
 
     // Function to calculate the final clearing price of an auction
     function getFinalPrice(uint256 _auctionId) public {
         uint256 auctionId = _auctionId;
 
         // Ensure the auction is active and has ended
-        require(auctions[auctionId].isActive == true, "Auction is not active");
-        require(block.timestamp > auctions[auctionId].endTime, "Auction time is not over");
+        require(auctions[auctionId].isActive, "Inactive");
+        require(block.timestamp > auctions[auctionId].endTime, "Not ended");
 
         // Ensure all bids have been decrypted before proceeding
         require(
             auctionPlaintextBids[_auctionId].length == auctionBids[_auctionId].length,
-            "All bids are not revealed yet"
+            "Bids not revealed"
         );
 
         // Retrieve all decrypted bids
@@ -371,8 +363,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
     }
     // Function for bidders to reclaim their tokens or refunds after an auction ends
     function reclaimTokens(uint256 _auctionId) public {
-        require(auctions[_auctionId].isActive == false, "Auction is still active"); // Ensure auction is finished
-        require(block.timestamp > auctions[_auctionId].endTime, "Auction time is not over"); // Ensure auction time has ended
+        require(auctions[_auctionId].isActive == false, "Still active"); // Ensure auction is finished
 
         uint256 auctionId = _auctionId;
         uint64 finalPrice = auctionFinalPrice[_auctionId]; // Retrieve the final auction price
@@ -382,7 +373,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         for (uint i = 0; i < totalBids.length; i++) {
             if (totalBids[i].bidId == msg.sender) {
                 // If the bid belongs to the caller
-                require(totalBids[i].isClaimed == false, "Tokens already claimed"); // Ensure tokens have not been claimed
+                require(totalBids[i].isClaimed == false, "Claimed"); // Ensure tokens have not been claimed
 
                 if (totalBids[i].perTokenRate > finalPrice) {
                     // Case 1: Bid was higher than the final price - Refund the difference & transfer tokens
@@ -396,7 +387,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
                             totalBids[i].bidId,
                             refundAmount
                         ),
-                        "Refund transfer failed"
+                        "transfer failed"
                     );
 
                     require(
@@ -404,7 +395,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
                             totalBids[i].bidId,
                             totalBids[i].tokenAsked
                         ),
-                        "Token transfer failed"
+                        "transfer failed"
                     );
                 } else if (totalBids[i].perTokenRate == finalPrice) {
                     // Case 2: Bid was exactly the final price - Partial refund based on edge winner allocation
@@ -421,12 +412,12 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
                             totalBids[i].bidId,
                             refundAmount
                         ),
-                        "Refund transfer failed"
+                        "transfer failed"
                     );
 
                     require(
                         IERC20(auctions[auctionId].auctionTokenAddress).transfer(totalBids[i].bidId, tokenGet),
-                        "Token transfer failed"
+                        "transfer failed"
                     );
                 } else {
                     // Case 3: Bid was lower than final price - Full refund
@@ -439,7 +430,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
                             totalBids[i].bidId,
                             refundAmountEncrypted
                         ),
-                        "Refund transfer failed"
+                        "transfer failed"
                     );
                 }
 
@@ -456,7 +447,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         bytes calldata _tokenCountproof
     ) public {
         // Ensure the auction is still active
-        require(auctions[_auctionId].isActive == true, "Auction is not active");
+        require(auctions[_auctionId].isActive == true);
 
         uint256 auctionId = _auctionId;
 
@@ -503,7 +494,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
                         address(this),
                         bidDifference
                     ),
-                    "Transfer failed, Maybe you forgot to approve tokens"
+                    "Transfer failed"
                 );
             }
         }
@@ -531,7 +522,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
         bytes calldata _tokenCountproof
     ) public {
         // Ensure the auction is still active
-        require(auctions[_auctionId].isActive == true, "Auction is not active");
+        require(auctions[_auctionId].isActive == true);
 
         uint256 auctionId = _auctionId;
 
