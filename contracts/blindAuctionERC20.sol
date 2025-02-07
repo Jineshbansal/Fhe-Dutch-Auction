@@ -60,7 +60,10 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
     mapping(uint256 => Bid[]) private auctionBids;
     // Stores all bids for a specific auction (auction ID → array of encrypted bids).
 
-    mapping(uint256 => uint64) public auctionBidsEdgeWinner;
+    /// @notice Mapping to store the number of tokens asked at the final auction price
+    /// @dev Maps auction ID to the cumulative number of tokens requested by bidders at the final price
+    mapping(uint256 => uint64) public auctionBidsAtFinalPrice;
+    // Number of tokens that are asked at the final price of the auction
     // Stores the per-token rate of the "edge winner" bid (auction ID → winning per-token bid rate).
     // The edge winner is typically the last winning bid that sets the final price.
 
@@ -319,7 +322,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
                 sellTokensWithProfit += totalBids[i].tokenAsked; // Tokens sold at a premium
             }
             if (finalPrice == totalBids[i].perTokenRate) {
-                auctionBidsEdgeWinner[_auctionId] += totalBids[i].tokenAsked; // Edge winners at the final price
+                auctionBidsAtFinalPrice[_auctionId] += totalBids[i].tokenAsked; // Edge winners at the final price
             }
         }
 
@@ -396,7 +399,7 @@ contract BlindAuctionERC20 is SepoliaZamaFHEVMConfig, SepoliaZamaGatewayConfig, 
                 } else if (totalBids[i].perTokenRate == finalPrice) {
                     // Case 2: Bid was exactly the final price - Partial refund based on edge winner allocation
                     uint64 tokenGet = (totalBids[i].tokenAsked * auctionAmountLeftForEdgeWinner[_auctionId]) /
-                        auctionBidsEdgeWinner[_auctionId];
+                        auctionBidsAtFinalPrice[_auctionId];
 
                     uint64 bidAmount = totalBids[i].tokenAsked * totalBids[i].perTokenRate;
                     uint64 finalAmount = tokenGet * finalPrice;
